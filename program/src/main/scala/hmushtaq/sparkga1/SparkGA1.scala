@@ -995,15 +995,15 @@ object SparkGA1
 	def main(args: Array[String]) 
 	{
 		val conf = new SparkConf().setAppName("SparkGA1")
-		val sc = new SparkContext(conf)
+		val sc = new SparkContext(conf)   // can be used to create RDDs, accumulators and broadcast variables on that cluster.
 		val appID = sc.applicationId
-		val config = new Configuration()
-		config.initialize(args(0), sc.deployMode, args(1))
+		val config = new Configuration()  // preparation to read config file
+		config.initialize(args(0), sc.deployMode, args(1)) //read 2nd parameter as a xml file
 		val part = args(1).toInt
 		
 		config.print() 
 		
-		val bcConfig = sc.broadcast(config)
+		val bcConfig = sc.broadcast(config)  // from bcConfig.value get the broadcast value config
 		val hdfsManager = new HDFSManager
 		
 		if (part == 1)
@@ -1011,16 +1011,16 @@ object SparkGA1
 			if (config.getMode != "local")
 				hdfsManager.create("sparkLog.txt")
 			else
-				FileManager.makeDirIfRequired(config.getOutputFolder + "log", config)
+				FileManager.makeDirIfRequired(config.getOutputFolder + "log", config)   // if it is local, then make directory locally
 		}
 		
-		hdfsManager.synchronized
+		hdfsManager.synchronized   // the synchroniztion between n threads, 'huchi'
 		{
 			LogWriter.statusLog("Started:", "Part " + part + ", Application ID: " + appID, config)
 		}
 		
 		var t0 = System.currentTimeMillis
-		val numOfRegions = config.getNumRegions.toInt
+		val numOfRegions = config.getNumRegions.toInt     // dynamic load balancing
 		// Spark Listener
 		sc.addSparkListener(new SparkListener() 
 		{
@@ -1047,17 +1047,17 @@ object SparkGA1
 		if (part == 1)
 		{ 
 			var bwaOutStr = new StringBuilder
-			if (config.doStreamingBWA)
+			if (config.doStreamingBWA) // whether it has chunks before the run, otherwise get it on the fly
 			{
 				var done = false
 				val parTasks = config.getChunkerGroupSize.toInt
 				var si = 0
 				var ei = parTasks
-				while(!done)
+				while(!done)   // on the fly
 				{
 					var indexes = (si until ei).toArray  
 					val inputData = sc.parallelize(indexes, indexes.size)
-					val bwaOutput = inputData.flatMap(x => bwaRun(x + ".fq", bcConfig.value)).cache
+					val bwaOutput = inputData.flatMap(x => bwaRun(x + ".fq", bcConfig.value)).cache  // run bwa for each chunks
 					for(e <- bwaOutput.collect)
 					{
 						val chr = e._1._1
@@ -1095,7 +1095,7 @@ object SparkGA1
 			
 				// Run instances of bwa and get the output as Key Value pairs
 				// <(chr, reg), fname>
-				val bwaOutput = inputData.flatMap(x => bwaRun(x, bcConfig.value))
+				val bwaOutput = inputData.flatMap(x => bwaRun(x, bcConfig.value))  // run bwa for each chunks
 				bwaOutput.setName("rdd_bwaOutput")
 				for(e <- bwaOutput.collect)
 				{
@@ -1107,7 +1107,7 @@ object SparkGA1
 					val maxPos = e._2._4
 					val posFname = e._2._5
 				
-					bwaOutStr.append(chr + "\t" + reg + "\t" + fname + "\t" + reads + "\t" + minPos + "\t" + maxPos + "\t" + posFname + "\n")
+					bwaOutStr.append(chr + "\t" + reg + "\t" + fname + "\t" + reads + "\t" + minPos + "\t" + maxPos + "\t" + posFname + "\n")  // output of bwa stage
 				}
 			}
 			FileManager.makeDirIfRequired(config.getOutputFolder + "bwaOut", config)
