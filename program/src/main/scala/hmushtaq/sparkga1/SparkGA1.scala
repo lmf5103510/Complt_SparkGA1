@@ -828,13 +828,13 @@ object SparkGA1
 		
 		var t0 = System.currentTimeMillis
 		
-		var cmdStr = "java " + MemString + " -jar " + toolsFolder + "CleanSam.jar INPUT=" + tmpOut1 + " OUTPUT=" + tmpOut2
+		var cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar CleanSam INPUT=" + tmpOut1 + " OUTPUT=" + tmpOut2
 		var cmdRes = cmdStr.!
 		
 		val bamOut = tmpFileBase + ".bam"
 		val tmpMetrics = tmpFileBase + "-metrics.txt"
 		
-		cmdStr = "java " + MemString + " -jar " + toolsFolder + "MarkDuplicates.jar INPUT=" + tmpOut2 + " OUTPUT=" + bamOut +
+		cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar MarkDuplicates INPUT=" + tmpOut2 + " OUTPUT=" + bamOut +
 			" METRICS_FILE=" + tmpMetrics + " CREATE_INDEX=true MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=500";
 		cmdRes = cmdStr.!
 		
