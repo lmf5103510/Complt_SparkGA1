@@ -899,15 +899,15 @@ object SparkGA1
 		
 		// Base recalibrator
 		var cmdStr = "java " + MemString + " " + config.getGATKopts + " -jar " + toolsFolder + "GenomeAnalysisTK.jar -T BaseRecalibrator -nct " + 
-			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile1 + " -o " + table + regionStr + 
-			" --disable_auto_index_creation_and_locking_when_reading_rods" + indelStr + " -knownSites " + knownSite
+			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile1 + " -o " + table + regionStr +       // regionStr, this is the bed file
+			" -cov ReadGroupCovariate -cov QualityScoreCovariate -cov CycleCovariate -cov ContextCovariate" + indelStr + " -knownSites " + knownSite //missing hapmap
 		LogWriter.dbgLog("vcf/region_" + chrRegion, "6\t" + cmdStr, config)
 		var cmdRes = cmdStr.!
 
 		if (config.doPrintReads)
 		{
 			cmdStr = "java " + MemString + " " + config.getGATKopts + " -jar " + toolsFolder + "GenomeAnalysisTK.jar -T PrintReads -R " + 
-				FileManager.getRefFilePath(config) + " -I " + tmpFile1 + " -o " + tmpFile2 + " -BQSR " + table + regionStr 
+				FileManager.getRefFilePath(config) + " -I " + tmpFile1 + " -o " + tmpFile2 + " -BQSR " + table + regionStr      // regionStr, this is the bed file
 			LogWriter.dbgLog("vcf/region_" + chrRegion, "7\t" + cmdStr, config)
 			cmdRes += cmdStr.!
 			// Hamid - Save output of baseQualityScoreRecalibration
@@ -937,8 +937,8 @@ object SparkGA1
 		
 		// Haplotype caller
 		var cmdStr = "java " + MemString + " " + config.getGATKopts + " -jar " + toolsFolder + "GenomeAnalysisTK.jar -T HaplotypeCaller -nct " + 
-			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile2 + bqsrStr + " --genotyping_mode DISCOVERY -o " + snps + 
-			standconf + standemit + regionStr + " --no_cmdline_in_header --disable_auto_index_creation_and_locking_when_reading_rods"
+			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile2 + bqsrStr + " -o " + snps + 
+			standconf + standemit + regionStr
 		LogWriter.dbgLog("vcf/region_" + chrRegion, "8\t" + cmdStr, config)
 		var cmdRes = cmdStr.!
 		
