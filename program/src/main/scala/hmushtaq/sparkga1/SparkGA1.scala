@@ -125,7 +125,7 @@ object SparkGA1
 			new File(input_file).delete()
 		
 		// run bwa mem
-		val progName = FileManager.getToolsDirPath(config) + "bwa mem "
+		val progName = FileManager.getToolsDirPath(config) + "bwa mem -R " + config.getRGString + " "
 		val outFileName = tmpDir + "out_" + x
 		val nthreads = config.getNumThreads.toInt
 		// Example: bwa mem input_files_directory/fasta_file.fasta -p -t 2 x.fq > out_file
@@ -835,7 +835,7 @@ object SparkGA1
 		val tmpMetrics = tmpFileBase + "-metrics.txt"
 		
 		cmdStr = "java " + MemString + " -jar " + toolsFolder + "MarkDuplicates.jar INPUT=" + tmpOut2 + " OUTPUT=" + bamOut +
-			" METRICS_FILE=" + tmpMetrics + " CREATE_INDEX=true";
+			" METRICS_FILE=" + tmpMetrics + " CREATE_INDEX=true MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=500";
 		cmdRes = cmdStr.!
 		
 		// Hamid - Save output of picardPreprocessing
