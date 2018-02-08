@@ -19,7 +19,7 @@ if len(sys.argv) < 3:
 	print("Example usage: ./runPart.py config.xml 1")
 	sys.exit(1)
 
-exeName = "program/sparkga1_2.11-1.0.jar"
+exeName = "program/target/scala-2.11/sparkga1_2.11-1.0.jar"
 chunkerExeName = "chunker/chunker_2.11-1.0.jar"
 logFile = "time.txt"
 configFilePath = sys.argv[1]

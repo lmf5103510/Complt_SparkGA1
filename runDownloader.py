@@ -18,7 +18,7 @@ import time
 #	rm: Remove a file from the local directory (sfFolder) of all nodes
 # 	ls: Display files in the local directory (sfFolder) of all nodes
 
-exeName = "filesDownloader/filesdownloader_2.11-1.0.jar"
+exeName = "filesDownloader/target/scala-2.11/filesdownloader_2.11-1.0.jar"
 
 if len(sys.argv) < 3:
 	print "Too few arguments"
