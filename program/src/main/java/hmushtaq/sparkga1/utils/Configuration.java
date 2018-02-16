@@ -38,6 +38,7 @@ public class Configuration implements Serializable
 	private String refPath;
 	private String snpPath;
 	private String indelPath;
+	private String hapmapPath;
 	private String exomePath;
 	private String inputFolder;
 	private String outputFolder;
@@ -56,6 +57,7 @@ public class Configuration implements Serializable
 	private String scc;
 	private String sec;
 	private String useKnownIndels;
+	private String useKnownHapmap;
 	private Long startTime;
 	private String driverMemGB;
 	private String vcMemGB;
@@ -86,6 +88,7 @@ public class Configuration implements Serializable
 			refPath = document.getElementsByTagName("refPath").item(0).getTextContent();
 			snpPath = document.getElementsByTagName("snpPath").item(0).getTextContent();
 			indelPath = emptyIfTagDoesntExist(document, "indelPath");
+			hapmapPath = emptyIfTagDoesntExist(document, "hapmapPath");
 			exomePath = emptyIfTagDoesntExist(document, "exomePath");
 			inputFolder = correctFolderName(document.getElementsByTagName("inputFolder").item(0).getTextContent());
 			outputFolder = correctFolderName(document.getElementsByTagName("outputFolder").item(0).getTextContent());
@@ -243,6 +246,11 @@ public class Configuration implements Serializable
 	{
 		return indelPath;
 	}
+
+	public String getHapmapPath()
+	{
+		return hapmapPath;
+	}
 	
 	public String getExomePath()
 	{
@@ -364,6 +372,11 @@ public class Configuration implements Serializable
 		return !indelPath.trim().equals("");
 	}
 	
+	public boolean useKnownHapmap()
+	{
+		return !hapmapPath.trim().equals("");
+	}
+
 	public boolean doIndelRealignment()
 	{
 		return performIndelRealignment;

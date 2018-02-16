@@ -102,6 +102,12 @@ object FileManager
 			config.getSfFolder() + getFileNameFromPath(config.getIndelPath())
 	}
 
+	def getHapmapFilePath(config: Configuration) : String = 
+	{
+		return if (config.getMode() == "local") config.getHapmapPath() else
+			config.getSfFolder() + getFileNameFromPath(config.getHapmapPath)
+	}
+
 	def getExomeFilePath(config: Configuration) : String = 
 	{
 		return if (config.getMode() == "local") config.getExomePath() else
