@@ -889,6 +889,7 @@ object SparkGA1
 	{
 		val toolsFolder = FileManager.getToolsDirPath(config)
 		val knownIndel = FileManager.getIndelFilePath(config)
+		val knownHapmap = FileManager.getHapmapPath(config)
 		val knownSite = FileManager.getSnpFilePath(config)
 		val tmpFile1 = if (config.doIndelRealignment) (tmpFileBase + "-2.bam") else (tmpFileBase + ".bam")
 		val tmpFile2 = tmpFileBase + "-3.bam"
@@ -896,11 +897,11 @@ object SparkGA1
 		val MemString = config.getExecMemX()
 		val regionStr = " -L " + tmpFileBase + ".bed"
 		val indelStr = if (config.useKnownIndels) (" -knownSites " + knownIndel) else ""; 
-		
+		val hapmapStr = if (config.useKnownHapmap) (" -knownSites " + knownHapmap) else "";
 		// Base recalibrator
 		var cmdStr = "java " + MemString + " " + config.getGATKopts + " -jar " + toolsFolder + "GenomeAnalysisTK.jar -T BaseRecalibrator -nct " + 
 			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile1 + " -o " + table + regionStr +       // regionStr, this is the bed file
-			" -cov ReadGroupCovariate -cov QualityScoreCovariate -cov CycleCovariate -cov ContextCovariate" + indelStr + " -knownSites " + knownSite //missing hapmap
+			" -cov ReadGroupCovariate -cov QualityScoreCovariate -cov CycleCovariate -cov ContextCovariate" + indelStr + hapmapStr + " -knownSites " + knownSite //missing hapmap
 		LogWriter.dbgLog("vcf/region_" + chrRegion, "6\t" + cmdStr, config)
 		var cmdRes = cmdStr.!
 
