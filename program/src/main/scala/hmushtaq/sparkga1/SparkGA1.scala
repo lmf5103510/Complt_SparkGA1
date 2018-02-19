@@ -834,9 +834,9 @@ object SparkGA1
 		val bamOut = tmpFileBase + ".bam"
 		val tmpMetrics = tmpFileBase + "-metrics.txt"
 		
-		var cmdStr = cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar MarkDuplicates INPUT=" + tmpOut1 + " OUTPUT=" + bamOut +
+		var cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar MarkDuplicates INPUT=" + tmpOut1 + " OUTPUT=" + bamOut +
 			" METRICS_FILE=" + tmpMetrics + " CREATE_INDEX=true MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=500";
-		var cmdRes = cmdRes = cmdStr.!
+		var cmdRes = cmdStr.!
 		
 		// Hamid - Save output of picardPreprocessing
 		if (saveAllStages)
