@@ -895,7 +895,7 @@ object SparkGA1
 		val tmpFile2 = tmpFileBase + "-3.bam"
 		val table = tmpFileBase + ".table"
 		val MemString = config.getExecMemX()
-		val regionStr = " -L " + tmpFileBase + ".bed"
+		val regionStr = " -L " + config.getTmpFolder + "MR.20170327.only_cds.bed"
 		val indelStr = if (config.useKnownIndels) (" -knownSites " + knownIndel) else ""; 
 		val hapmapStr = if (config.useKnownHapmap) (" -knownSites " + knownHapmap) else "";
 		// Base recalibrator
@@ -931,7 +931,7 @@ object SparkGA1
 		val snps = tmpFileBase + ".vcf"
 		val bqsrStr = if (config.doPrintReads) "" else (" -BQSR " + tmpFileBase + ".table ")
 		val MemString = config.getExecMemX()
-		val regionStr = " -L " + tmpFileBase + ".bed"
+		val regionStr = " -L " + config.getTmpFolder + "MR.20170327.only_cds.bed"
 		// Hamid
 		val standconf = if (config.getSCC == "0") " " else (" -stand_call_conf " + config.getSCC)
 		val standemit = if (config.getSEC == "0") " " else (" -stand_emit_conf " + config.getSEC)
