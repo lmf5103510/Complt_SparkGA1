@@ -828,7 +828,7 @@ object SparkGA1
 		
 		var t0 = System.currentTimeMillis
 		
-		var cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar SortSam CREATE_INDEX=TRUE SORT_ORDER=coordinate INPUT=" + tmpOut1 + " OUTPUT=" + tmpOut2 
+		var cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar CleanSam INPUT=" + tmpOut1 + " OUTPUT=" + tmpOut2 
 		var cmdRes = cmdStr.!
 		
 		val bamOut = tmpFileBase + ".bam"
@@ -895,7 +895,7 @@ object SparkGA1
 		val tmpFile2 = tmpFileBase + "-3.bam"
 		val table = tmpFileBase + ".table"
 		val MemString = config.getExecMemX()
-		val regionStr = " -L " + config.getTmpFolder + "MR.20170327.only_cds.bed"
+		val regionStr = " -L " + tmpFileBase + ".bed"
 		val indelStr = if (config.useKnownIndels) (" -knownSites " + knownIndel) else ""; 
 		val hapmapStr = if (config.useKnownHapmap) (" -knownSites " + knownHapmap) else "";
 		// Base recalibrator
@@ -931,7 +931,7 @@ object SparkGA1
 		val snps = tmpFileBase + ".vcf"
 		val bqsrStr = if (config.doPrintReads) "" else (" -BQSR " + tmpFileBase + ".table ")
 		val MemString = config.getExecMemX()
-		val regionStr = " -L " + config.getTmpFolder + "MR.20170327.only_cds.bed"
+		val regionStr = " -L " + tmpFileBase + ".bed"
 		// Hamid
 		val standconf = if (config.getSCC == "0") " " else (" -stand_call_conf " + config.getSCC)
 		val standemit = if (config.getSEC == "0") " " else (" -stand_emit_conf " + config.getSEC)
