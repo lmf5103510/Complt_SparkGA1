@@ -823,20 +823,20 @@ object SparkGA1
 	{
 		val toolsFolder = FileManager.getToolsDirPath(config)
 		val tmpOut1 = tmpFileBase + "-p1.bam"
-		// val tmpOut2 = tmpFileBase + "-p2.bam"
+		val tmpOut2 = tmpFileBase + "-p2.bam"
 		val MemString = config.getExecMemX()
 		
 		var t0 = System.currentTimeMillis
 		
-		// var cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar CleanSam INPUT=" + tmpOut1 + " OUTPUT=" + tmpOut2
-		// var cmdRes = cmdStr.!
+		var cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar SortSam CREATE_INDEX=TRUE SORT_ORDER=coordinate INPUT=" + tmpOut1 + " OUTPUT=" + tmpOut2 
+		var cmdRes = cmdStr.!
 		
 		val bamOut = tmpFileBase + ".bam"
 		val tmpMetrics = tmpFileBase + "-metrics.txt"
 		
-		var cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar MarkDuplicates INPUT=" + tmpOut1 + " OUTPUT=" + bamOut +
+		cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar MarkDuplicates INPUT=" + tmpOut2 + " OUTPUT=" + bamOut +
 			" METRICS_FILE=" + tmpMetrics + " CREATE_INDEX=true MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=500";
-		var cmdRes = cmdStr.!
+		cmdRes = cmdStr.!
 		
 		// Hamid - Save output of picardPreprocessing
 		if (saveAllStages)
@@ -844,7 +844,7 @@ object SparkGA1
 		
 		// Delete temporary files
 		new File(tmpOut1).delete()
-		// new File(tmpOut2).delete()
+		new File(tmpOut2).delete()
 		new File(tmpMetrics).delete()
 		
 		return cmdRes
@@ -900,7 +900,7 @@ object SparkGA1
 		val hapmapStr = if (config.useKnownHapmap) (" -knownSites " + knownHapmap) else "";
 		// Base recalibrator
 		var cmdStr = "java " + MemString + " " + config.getGATKopts + " -jar " + toolsFolder + "GenomeAnalysisTK.jar -T BaseRecalibrator -nct " + 
-			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile1 + " -o " + table + regionStr +       // regionStr, this is the bed file
+			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile1 + " -o " + table + //regionStr +       // regionStr, this is the bed file
 			" -cov ReadGroupCovariate -cov QualityScoreCovariate -cov CycleCovariate -cov ContextCovariate" + indelStr + hapmapStr + " -knownSites " + knownSite //missing hapmap
 		LogWriter.dbgLog("vcf/region_" + chrRegion, "6\t" + cmdStr, config)
 		var cmdRes = cmdStr.!
@@ -908,7 +908,7 @@ object SparkGA1
 		if (config.doPrintReads)
 		{
 			cmdStr = "java " + MemString + " " + config.getGATKopts + " -jar " + toolsFolder + "GenomeAnalysisTK.jar -T PrintReads -R " + 
-				FileManager.getRefFilePath(config) + " -I " + tmpFile1 + " -o " + tmpFile2 + " -BQSR " + table + regionStr      // regionStr, this is the bed file
+				FileManager.getRefFilePath(config) + " -I " + tmpFile1 + " -o " + tmpFile2 + " -BQSR " + table //+ regionStr      // regionStr, this is the bed file
 			LogWriter.dbgLog("vcf/region_" + chrRegion, "7\t" + cmdStr, config)
 			cmdRes += cmdStr.!
 			// Hamid - Save output of baseQualityScoreRecalibration
@@ -938,7 +938,7 @@ object SparkGA1
 		
 		// Haplotype caller
 		var cmdStr = "java " + MemString + " " + config.getGATKopts + " -jar " + toolsFolder + "GenomeAnalysisTK.jar -T HaplotypeCaller -nct " + 
-			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile2 + bqsrStr + " -o " + snps + 
+			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile2 + " -o " + snps + //bqsrStr + 
 			standconf + standemit + regionStr
 		LogWriter.dbgLog("vcf/region_" + chrRegion, "8\t" + cmdStr, config)
 		var cmdRes = cmdStr.!
