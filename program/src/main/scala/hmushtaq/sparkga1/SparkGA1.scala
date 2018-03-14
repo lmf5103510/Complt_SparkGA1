@@ -835,7 +835,7 @@ object SparkGA1
 		val tmpMetrics = tmpFileBase + "-metrics.txt"
 		
 		cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar MarkDuplicates INPUT=" + tmpOut2 + " OUTPUT=" + bamOut +
-			" METRICS_FILE=" + tmpMetrics + " CREATE_INDEX=true MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=500";
+			" METRICS_FILE=" + tmpMetrics + " CREATE_INDEX=true";
 		cmdRes = cmdStr.!
 		
 		// Hamid - Save output of picardPreprocessing
@@ -900,8 +900,8 @@ object SparkGA1
 		val hapmapStr = if (config.useKnownHapmap) (" -knownSites " + knownHapmap) else "";
 		// Base recalibrator
 		var cmdStr = "java " + MemString + " " + config.getGATKopts + " -jar " + toolsFolder + "GenomeAnalysisTK.jar -T BaseRecalibrator -nct " + 
-			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile1 + " -o " + table + //regionStr +       // regionStr, this is the bed file
-			" -cov ReadGroupCovariate -cov QualityScoreCovariate -cov CycleCovariate -cov ContextCovariate" + indelStr + hapmapStr + " -knownSites " + knownSite //missing hapmap
+			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile1 + " -o " + table + regionStr +       // regionStr, this is the bed file
+			indelStr + hapmapStr + " -knownSites " + knownSite //missing hapmap
 		LogWriter.dbgLog("vcf/region_" + chrRegion, "6\t" + cmdStr, config)
 		var cmdRes = cmdStr.!
 
@@ -939,7 +939,7 @@ object SparkGA1
 		// Haplotype caller
 		var cmdStr = "java " + MemString + " " + config.getGATKopts + " -jar " + toolsFolder + "GenomeAnalysisTK.jar -T HaplotypeCaller -nct " + 
 			config.getNumThreads() + " -R " + FileManager.getRefFilePath(config) + " -I " + tmpFile2 + " -o " + snps + //bqsrStr + 
-			standconf + standemit + regionStr
+			standconf + standemit + regionStr + " -ip 100"
 		LogWriter.dbgLog("vcf/region_" + chrRegion, "8\t" + cmdStr, config)
 		var cmdRes = cmdStr.!
 		
