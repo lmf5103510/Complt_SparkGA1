@@ -123,13 +123,15 @@ object SparkGA1
 		unzipStr #> new java.io.File(fqFileName) !;
 		if (config.getMode != "local")
 			new File(input_file).delete()
-		
+		// All the chunks_file has been unzipped and uploaded to tmp folder in DataNode
 		// run bwa mem
 		val progName = FileManager.getToolsDirPath(config) + "bwa mem -R " + config.getRGString + " "
 		val outFileName = tmpDir + "out_" + x
 		val nthreads = config.getNumThreads.toInt
 		// Example: bwa mem input_files_directory/fasta_file.fasta -p -t 2 x.fq > out_file
 		val command_str = progName + FileManager.getRefFilePath(config) + " " + config.getExtraBWAParams + " -t " + nthreads.toString + " " + fqFileName
+		
+		// How does it got the bwa result here?  Done!
 		LogWriter.dbgLog("bwa/" + x, "1\tbwa mem started, RGID = " + config.getRGID + " -> " + command_str, config)
 		var writerMap = new HashMap[(Integer, Integer), SamRegion]()
 		val samRegionsParser = new SamRegionsParser(x, writerMap, config)
@@ -140,9 +142,10 @@ object SparkGA1
 				},
 			(e: String) => {stdErrorSb.append(e + '\n')}
 		)
-		command_str ! logger;
+		command_str ! logger;  // The result from this command executing will go to samRegionsParser
 		new File(fqFileName).delete()
-		
+		// End ==========================================================================
+
 		FileManager.makeDirIfRequired(config.getOutputFolder + "samChunks", config)
 		FileManager.makeDirIfRequired(config.getOutputFolder + "bwaPos", config)
 		
@@ -163,11 +166,11 @@ object SparkGA1
 			val t1 = System.currentTimeMillis
 			val chr = k._1
 			val reg = k._2
-			
+			//  the info with each chr region
 			val minPos = samRegion.getMinPos
 			val maxPos = samRegion.getMaxPos
 			val content = samRegion.getContent
-			val posContent = samRegion.getPositionsStr
+			val posContent = samRegion.getPositionsStr // all the positions in this region
 			var posInfoStr = ""
 			
 			// For positions /////////////////////////////////////////////////////

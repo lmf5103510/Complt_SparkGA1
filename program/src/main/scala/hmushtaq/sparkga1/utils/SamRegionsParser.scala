@@ -51,17 +51,21 @@ class SamRegionsParser(chunkID: String, writerMap: scala.collection.mutable.Hash
 				
 			if (config.isInIgnoreList(fields(2)))
 				return 1
-				
+			
+			// example output:
+			// 11V6WR1:111:D1375ACXX:1:2212:1700:6991  163     chr14   100563971       60      100M    =       10056482      211     AACATCATGAATTCCCAAGAAGGAGGTAAGTAGGGCTTTGTCTTGGCCTGATGCTGAGACCCTCTCTTGTTCTACCTCTGCCCTCCACAGCTCTGGCTC   CCCFFFFFHHHHHJJJJJJJIJJGHJAFGGGIJJJJJJJJGIJJJJIJJJJJJJJJJJIHIJIJJJJJJIJHHHHHHFFFFFDEDDDDDDDDDCCDDDA   NM:i:0  MD:Z:100        AS:i:100        XS:i:0  RG:Z:sample_lane	
 			val chr = config.getChrIndex(fields(2))
+			// position of that read in that chr   
 			val chrPos = fields(3).toInt
 			
 			if (chr >= 0)
 			{
+				//getChrRegionSize: the average region size for this chr, obtain this region num for this read, eg, this read is in region 2 or chr2
 				val reg = chrPos / config.getChrRegionSize(chr)
 				
 				if (!writerMap.contains((chr, reg)))
 					writerMap.put((chr, reg), new SamRegion(header.toString, chr + "_" + reg + "_" + chunkID, config))
-				writerMap((chr, reg)).append(chrPos, line)
+				writerMap((chr, reg)).append(chrPos, line)  // put corresponding line into right chr+reg chunks
 				
 				mReads += 1
 			}
