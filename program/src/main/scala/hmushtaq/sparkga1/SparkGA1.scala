@@ -242,7 +242,8 @@ object SparkGA1
 		val chr = chrRegion._1
 		val reg = chrRegion._2
 		val reads = files.map(x => x._2).reduce(_+_)
-		var segments = (reads.toFloat * config.getRegionsFactor.toFloat / avgReadsPerRegion).round.toInt
+		// 
+		var segments = 1 //(reads.toFloat * config.getRegionsFactor.toFloat / avgReadsPerRegion).round.toInt
 		var retSegments = 1
 		val minPos = files.map(x => x._3).reduceLeft(_ min _)
 		val maxPos = files.map(x => x._4).reduceLeft(_ max _)
@@ -1121,11 +1122,13 @@ object SparkGA1
 		{
 			val input = ArrayBuffer.empty[((Integer, Integer), (String, Long, Int, Int, String))]
 			val s = scala.collection.mutable.Set.empty[(Integer, Integer)]
+			// (chr, reg), ("chunk_" + x + "-" + currentNum + ",0," + content.size, samRegion.getSize, minPos, maxPos, posInfoStr)
 			val inputLinesArray = FileManager.readWholeFile(config.getOutputFolder + "bwaOut.txt", config).split('\n')
 				
 			for( x <- inputLinesArray)
 			{
 				val e = x.split('\t')
+				// (chr, reg), ("chunk_" + x + "-" + currentNum + ",0," + content.size, samRegion.getSize, minPos, maxPos, posInfoStr)
 				input.append(((e(0).toInt, e(1).toInt), (e(2), e(3).toLong, e(4).toInt, e(5).toInt, e(6))))
 				s.add((e(0).toInt, e(1).toInt))
 			}
@@ -1160,6 +1163,7 @@ object SparkGA1
 					chrReg.map(x => makeBAMFiles(x._1, x._2.toArray, avgReadsPerRegion, bcConfig.value))
 				else
 				{
+					// x._2.map(_._2).reduce(_+_)  means: x._2 is an array first, x._2._2 is the numberOfReads. the result is the totalNumOfReads in that region 
 					val chrRegByReads = chrReg.map(x => (x._1, x._2, x._2.map(_._2).reduce(_+_))).sortBy(_._3, false)
 					chrRegByReads.map(x => makeBAMFiles(x._1, x._2.toArray, avgReadsPerRegion, bcConfig.value))
 				}
