@@ -236,11 +236,11 @@ object SparkGA1
 		return sb.toString()
 	}
 		
-	def makeBAMFiles(chrRegion: (Integer, Integer), files: Array[(String, Long, Int, Int, String)], avgReadsPerRegion: Long, config: Configuration) : 
+	def makeBAMFiles(chrRegion: Integer, files: Array[(String, Long, Int, Int, String, Integer)], avgReadsPerRegion: Long, config: Configuration) : 
 		((Integer, Integer), Int) = 
 	{
-		val chr = chrRegion._1
-		val reg = chrRegion._2
+		val chr = chrRegion//._1
+		val reg = 1 //chrRegion._2
 		val reads = files.map(x => x._2).reduce(_+_)
 		// 
 		var segments = 1 //(reads.toFloat * config.getRegionsFactor.toFloat / avgReadsPerRegion).round.toInt
@@ -1120,7 +1120,7 @@ object SparkGA1
 		}
 		else if (part == 2)
 		{
-			val input = ArrayBuffer.empty[((Integer, Integer), (String, Long, Int, Int, String))]
+			val input = ArrayBuffer.empty[(Integer, (String, Long, Int, Int, String, Integer))]
 			val s = scala.collection.mutable.Set.empty[(Integer, Integer)]
 			// (chr, reg), ("chunk_" + x + "-" + currentNum + ",0," + content.size, samRegion.getSize, minPos, maxPos, posInfoStr)
 			val inputLinesArray = FileManager.readWholeFile(config.getOutputFolder + "bwaOut.txt", config).split('\n')
@@ -1129,7 +1129,7 @@ object SparkGA1
 			{
 				val e = x.split('\t')
 				// (chr, reg), ("chunk_" + x + "-" + currentNum + ",0," + content.size, samRegion.getSize, minPos, maxPos, posInfoStr)
-				input.append(((e(0).toInt, e(1).toInt), (e(2), e(3).toLong, e(4).toInt, e(5).toInt, e(6))))
+				input.append((e(0).toInt, (e(2), e(3).toLong, e(4).toInt, e(5).toInt, e(6), e(1).toInt)))
 				s.add((e(0).toInt, e(1).toInt))
 			}
 			
@@ -1139,7 +1139,7 @@ object SparkGA1
 			}
 			
 			val inputArray = input.toArray
-			// <(chr, reg), (fname, numOfReads, minPos, maxPos)>
+			// <chr, (fname, numOfReads, minPos, maxPos, info, reg)>
 			val inputData = sc.parallelize(inputArray, s.size)
 			inputData.cache()
 			val totalReads = inputData.map(x => x._2._2).reduce(_+_)
