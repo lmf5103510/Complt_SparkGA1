@@ -59,10 +59,29 @@ class SamRegionsParser(chunkID: String, writerMap: scala.collection.mutable.Hash
 			// position of that read in that chr   
 			val chrPos = fields(3).toInt
 
-			if (chr >= 0 && chr <=24)
+			if (chr >= 0  && (flags & 2) > 0)
 			{
-				// if (fields(6) == "=") {
-					//getChrRegionSize: the average region size for this chr, obtain this region num for this read, eg, this read is in region 2 or chr2
+				if (fields(6) != "=") {
+					
+					if (!config.isInIgnoreList(fields(6))) {
+						//getChrRegionSize: the average region size for this chr, obtain this region num for this read, eg, this read is in region 2 or chr2
+						val reg = chrPos / config.getChrRegionSize(chr)
+					
+						if (!writerMap.contains((chr, reg)))
+							writerMap.put((chr, reg), new SamRegion(header.toString, chr + "_" + reg + "_" + chunkID, config))
+						writerMap((chr, reg)).append(chrPos, line)  // put corresponding line into right chr+reg chunks
+					
+						mReads += 1
+
+						val mate_chr = config.getChrIndex(fields(6))
+						val mate_chrPos = fields(7).toInt
+						val mate_reg = mate_chrPos / config.getChrRegionSize(mate_chr)
+						if (!writerMap.contains((mate_chr, mate_reg)))
+							writerMap.put((mate_chr, mate_reg), new SamRegion(header.toString, mate_chr + "_" + mate_reg + "_" + chunkID, config))
+						writerMap((mate_chr, mate_reg)).append(mate_chrPos, line)  // put corresponding line into right chr+reg chunks
+					}
+				}
+				else {
 					val reg = chrPos / config.getChrRegionSize(chr)
 				
 					if (!writerMap.contains((chr, reg)))
@@ -70,23 +89,7 @@ class SamRegionsParser(chunkID: String, writerMap: scala.collection.mutable.Hash
 					writerMap((chr, reg)).append(chrPos, line)  // put corresponding line into right chr+reg chunks
 				
 					mReads += 1
-				// }
-				// else {
-				// 	val mate_chr = config.getChrIndex(fields(6))
-				// 	if (mate_chr >= 0 && mate_chr <=24){
-				// 		val reg = chrPos / config.getChrRegionSize(chr)				
-				// 		if (!writerMap.contains((chr, reg)))
-				// 			writerMap.put((chr, reg), new SamRegion(header.toString, chr + "_" + reg + "_" + chunkID, config))
-				// 		writerMap((chr, reg)).append(chrPos, line)  // put corresponding line into right chr+reg chunks				
-				// 		mReads += 1	
-
-				// 		val mate_chrPos = fields(7).toInt
-				// 		val mate_reg = mate_chrPos / config.getChrRegionSize(mate_chr)
-				// 		if (!writerMap.contains((mate_chr, mate_reg)))
-				// 			writerMap.put((mate_chr, mate_reg), new SamRegion(header.toString, mate_chr + "_" + mate_reg + "_" + chunkID, config))
-				// 		writerMap((mate_chr, mate_reg)).append(mate_chrPos, line)  // put corresponding line into right chr+reg chunks
-				// 	}
-				// }
+				}
 			}
 
 			return 1
