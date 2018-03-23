@@ -617,9 +617,9 @@ object SparkGA1
 		val factory = new SAMFileWriterFactory()
 		val writer = {
 			if ((config.getMode != "local") && writeToHDFSDirectlyInLB)
-				factory.makeBAMWriter(header, true,  hdfsManager.openStream(config.getOutputFolder + "bam/" + chrRegion + "-p1.bam"))
+				factory.makeSAMWriter(header, true,  hdfsManager.openStream(config.getOutputFolder + "sam/" + chrRegion + "-p1.sam"))
 			else
-				factory.makeBAMWriter(header, true, new File(tmpFileBase + "-p1.bam")) 
+				factory.makeSAMWriter(header, true, new File(tmpFileBase + "-p1.sam")) 
 		}
 		val regionIter = new RegionIterator(samRecords, header, startIndex, endIndex)
 		val RGID = config.getRGID
@@ -651,7 +651,7 @@ object SparkGA1
 		makeRegionFile(tmpFileBase, regionIter, config)
 		
 		if (!writeToHDFSDirectlyInLB)
-			FileManager.uploadFileToOutput(tmpFileBase + "-p1.bam", "bam", true, config)
+			FileManager.uploadFileToOutput(tmpFileBase + "-p1.sam", "sam", true, config)
 		FileManager.uploadFileToOutput(tmpFileBase + ".bed", "bed", true, config)
 		LogWriter.dbgLog("lb" + part + "/region_" + chrRegion, "3\tBAM and bed files uploaded to the HDFS", config)
 		
