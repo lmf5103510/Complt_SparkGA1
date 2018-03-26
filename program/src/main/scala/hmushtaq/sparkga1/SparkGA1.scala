@@ -617,9 +617,9 @@ object SparkGA1
 		val factory = new SAMFileWriterFactory()
 		val writer = {
 			if ((config.getMode != "local") && writeToHDFSDirectlyInLB)
-				factory.makeBAMWriter(header, true,  hdfsManager.openStream(config.getOutputFolder + "bam/" + chrRegion + "-p1.bam"))
+				factory.makeSAMWriter(header, true,  hdfsManager.openStream(config.getOutputFolder + "sam/" + chrRegion + "-p1_x_cut_50_picard_sort.sam"))
 			else
-				factory.makeBAMWriter(header, true, new File(tmpFileBase + "-p1.bam")) 
+				factory.makeSAMWriter(header, true, new File(tmpFileBase + "-p1_x_cut_50_picard_sort.sam")) 
 		}
 		val regionIter = new RegionIterator(samRecords, header, startIndex, endIndex)
 		val RGID = config.getRGID
@@ -651,7 +651,7 @@ object SparkGA1
 		makeRegionFile(tmpFileBase, regionIter, config)
 		
 		if (!writeToHDFSDirectlyInLB)
-			FileManager.uploadFileToOutput(tmpFileBase + "-p1.bam", "bam", true, config)
+			FileManager.uploadFileToOutput(tmpFileBase + "-p1_x_cut_50_picard_sort.sam", "sam", true, config)
 		FileManager.uploadFileToOutput(tmpFileBase + ".bed", "bed", true, config)
 		LogWriter.dbgLog("lb" + part + "/region_" + chrRegion, "3\tBAM and bed files uploaded to the HDFS", config)
 		
@@ -756,6 +756,67 @@ object SparkGA1
 		header.setSequenceDictionary(config.getDict())
 		
 		return header
+	}
+
+	def compltCall (chrRegion: String, config: Configuration) : (String, Integer) =
+	{
+		val tmpFileBase = config.getTmpFolder + chrRegion
+		val hdfsManager = new HDFSManager
+		val downloadRef = config.getSfFolder == "./"
+		
+		if (config.getMode != "local")
+		{
+			hdfsManager.create(config.getOutputFolder + "log/complt/" + "region_" + chrRegion)
+				
+			if (!(new File(config.getTmpFolder).exists))
+				new File(config.getTmpFolder).mkdirs()
+			
+			LogWriter.dbgLog("complt/region_" + chrRegion, "2g\tDownloading incomplt sam files to the local directory...", config)
+			hdfsManager.download(chrRegion + "-p1_x_cut_50_picard_sort.sam", config.getOutputFolder + "sam/", config.getTmpFolder, false)
+			LogWriter.dbgLog("complt/region_" + chrRegion, "2h\tCompleted download of incomplt sam to the local directory!", config)
+		}
+		else
+			FileManager.makeDirIfRequired(config.getOutputFolder + "log/complt", config)
+
+		var f = new File(tmpFileBase + "-p1_x_cut_50_picard_sort.sam");
+		if(f.exists() && !f.isDirectory()) 
+			LogWriter.dbgLog("complt/region_" + chrRegion, "*+\tSAM file does exist in the tmp directory!", config)
+		else
+			LogWriter.dbgLog("complt/region_" + chrRegion, "*-\tSAM file does not exist in the tmp directory!", config)
+		
+		LogWriter.dbgLog("complt/region_" + chrRegion, "3\tComplting started", config)
+		var cmdRes = compltProcess(tmpFileBase, config)
+
+		return (chrRegion, cmdRes)
+	}
+
+	def compltProcess(tmpFileBase: String, config: Configuration) : Integer =
+	{
+		val toolsFolder = FileManager.getToolsDirPath(config)
+		val tmpOut1 = tmpFileBase + "-p1_x_cut_50_picard_sort.sam"
+		val tmpOut2 = tmpFileBase + "-p2.sam"
+		val tmpOut3 = tmpFileBase + "-p1.fastq"
+		val tmpOut4 = tmpFileBase + "-p2.fastq"
+		val MemString = config.getExecMemX()
+		
+		var t0 = System.currentTimeMillis
+		// ./complt_cut_read/complt_cut_read_fast --n_threads 16 --in_fname ./${1}_x_cut_${3}_picard_sort.sam --out_fname ./${1}_complt.sam --use_ref --ref ../gnome/hg19/ucsc.hg19.fasta --read_len 100
+		// FileManager.getToolsDirPath(config) + "bwa
+		var cmdStr = toolsFolder + "complt_cut_read_fast --n_threads 4 --in_fname " + tmpOut1 + " --out_fname " + tmpOut2 + " --use_ref --ref " + FileManager.getRefFilePath(config) + " --read_len 100"
+		var cmdRes = cmdStr.!
+				
+		cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar SamToFastq INPUT=" + tmpOut2 + " FASTQ=" + tmpOut3 + " SECOND_END_FASTQ=" + tmpOut4
+		cmdRes = cmdStr.!
+		
+		FileManager.uploadFileToOutput(tmpOut3, "compltOutput", false, config)
+		FileManager.uploadFileToOutput(tmpOut4, "compltOutput", false, config)
+		
+		// Delete temporary files
+		// new File(tmpOut1).delete()
+		// new File(tmpOut2).delete()
+		// new File(tmpMetrics).delete()
+		
+		return cmdRes
 	}
 
 	def processBAM(chrRegion: String, config: Configuration) : Integer =
@@ -1192,7 +1253,37 @@ object SparkGA1
 			FileManager.writeWholeFile(config.getOutputFolder + "log/regions.txt", segmentsStr.toString + "=================================\n" + 
 				singleSegmentStr + "=================================\nTotal number of regions = " + totalRegions, config)
 		}
-		else // (part == 3)
+		else if (part == 3)
+		{
+			var inputFileNames: Array[String] = null
+			if (config.getMode != "local") 
+				inputFileNames = FileManager.getInputFileNames(config.getOutputFolder + "bed/", config).map(x => x.replace(".bed", ""))
+			else 
+				inputFileNames = FileManager.getInputFileNames(config.getTmpFolder, config).filter(x => x.contains(".bed")).map(x => x.replace(".bed", ""))
+
+			val inputData = 
+			{
+				if (!sizeBasedVCScheduling)
+				{
+					inputFileNames.foreach(println)
+					sc.parallelize(inputFileNames, inputFileNames.size)
+				}
+				else
+				{
+					val inputFileNamesWithSize = inputFileNames.map(x => (x, hdfsManager.getFileSize(config.getOutputFolder + "sam/" + x + "-p1_x_cut_50_picard_sort.sam")))
+					val fileNamesBySize = inputFileNamesWithSize.sortWith(_._2 > _._2).map(_._1)
+					fileNamesBySize.foreach(println)
+					sc.parallelize(fileNamesBySize, fileNamesBySize.size)
+				}
+			}
+			//////////////////////////////////////////////////////////////////////
+			inputData.setName("rdd_incompltData")
+			val vcRes = inputData.map(x => compltCall(x, bcConfig.value)).cache
+			vcRes.setName("rdd_compltRes")
+
+
+		}
+		else if (part == 4)
 		{
 			// For sorting
 			implicit val vcfOrdering = new Ordering[(Integer, Integer)] {
