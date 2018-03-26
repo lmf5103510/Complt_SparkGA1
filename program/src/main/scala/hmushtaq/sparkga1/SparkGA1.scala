@@ -806,7 +806,7 @@ object SparkGA1
 		var cmdRes = cmdStr.!
 				
 		cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar SamToFastq INPUT=" + tmpOut2 + " FASTQ=" + tmpOut3 + " SECOND_END_FASTQ=" + tmpOut4
-		cmdRes = cmdStr.!
+		cmdRes += cmdStr.!
 		
 		FileManager.uploadFileToOutput(tmpOut3, "compltOutput", false, config)
 		FileManager.uploadFileToOutput(tmpOut4, "compltOutput", false, config)
@@ -1276,11 +1276,25 @@ object SparkGA1
 					sc.parallelize(fileNamesBySize, fileNamesBySize.size)
 				}
 			}
-			//////////////////////////////////////////////////////////////////////
+
 			inputData.setName("rdd_incompltData")
 			val vcRes = inputData.map(x => compltCall(x, bcConfig.value)).cache
 			vcRes.setName("rdd_compltRes")
-
+			val successfulSb = new StringBuilder
+			val failedSb = new StringBuilder
+			for(e <- vcRes.collect)
+			{
+				if (e._2 > 0)
+					failedSb.append(e._1 + '\n')
+				else
+					successfulSb.append(e._1 + '\n')
+			}
+			hdfsManager.synchronized
+			{
+				LogWriter.statusLog("complt-tasks:", "\nSuccessful tasks:\n" + successfulSb.toString + 
+					"=======================================================\nFailed tasks:\n" + failedSb.toString + 
+					"=======================================================", config)
+			}
 
 		}
 		else if (part == 4)
