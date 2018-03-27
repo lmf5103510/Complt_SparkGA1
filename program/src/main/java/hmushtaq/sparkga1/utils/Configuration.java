@@ -61,6 +61,7 @@ public class Configuration implements Serializable
 	private Long startTime;
 	private String driverMemGB;
 	private String vcMemGB;
+	private String readLen;
 	private String chunkerConfigFilePath;
 	private String chunkerGroupSize;
 	private boolean streamingBWA;
@@ -116,6 +117,7 @@ public class Configuration implements Serializable
 			numThreads = document.getElementsByTagName("numThreads" + part).item(0).getTextContent();
 			driverMemGB = document.getElementsByTagName("driverMemGB" + part).item(0).getTextContent();
 			vcMemGB = document.getElementsByTagName("vcMemGB").item(0).getTextContent();
+			readLen = emptyIfTagDoesntExist(document, "readLen");
 			scc	= document.getElementsByTagName("standCC").item(0).getTextContent();
 			sec	= document.getElementsByTagName("standEC").item(0).getTextContent();
 			sec	= document.getElementsByTagName("standEC").item(0).getTextContent();
@@ -355,6 +357,10 @@ public class Configuration implements Serializable
 		Integer execValue = Integer.parseInt(vcMemGB) * 1024; 
 		
 		return "-Xmx" + execValue.toString() + "m";
+	}
+	public String getReadLen()
+	{
+		return readLen;
 	}
 	
 	public String getChunkerGroupSize()

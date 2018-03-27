@@ -798,19 +798,80 @@ object SparkGA1
 		val tmpOut3 = tmpFileBase + "-p1.fastq"
 		val tmpOut4 = tmpFileBase + "-p2.fastq"
 		val MemString = config.getExecMemX()
+		val readLength = config.getReadLen()
 		
 		var t0 = System.currentTimeMillis
 		// ./complt_cut_read/complt_cut_read_fast --n_threads 16 --in_fname ./${1}_x_cut_${3}_picard_sort.sam --out_fname ./${1}_complt.sam --use_ref --ref ../gnome/hg19/ucsc.hg19.fasta --read_len 100
 		// FileManager.getToolsDirPath(config) + "bwa
-		var cmdStr = toolsFolder + "complt_cut_read_fast --n_threads 4 --in_fname " + tmpOut1 + " --out_fname " + tmpOut2 + " --use_ref --ref " + FileManager.getRefFilePath(config) + " --read_len 100"
+		var cmdStr = toolsFolder + "complt_cut_read_fast --n_threads 4 --in_fname " + tmpOut1 + " --out_fname " + tmpOut2 + " --use_ref --ref " + FileManager.getRefFilePath(config) + " --read_len " + readLength
 		var cmdRes = cmdStr.!
 				
 		cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar SamToFastq INPUT=" + tmpOut2 + " FASTQ=" + tmpOut3 + " SECOND_END_FASTQ=" + tmpOut4
 		cmdRes += cmdStr.!
 		
-		FileManager.uploadFileToOutput(tmpOut3, "compltOutput", false, config)
-		FileManager.uploadFileToOutput(tmpOut4, "compltOutput", false, config)
+		// FileManager.uploadFileToOutput(tmpOut3, "complt", false, config)
+		// FileManager.uploadFileToOutput(tmpOut4, "complt", false, config)
 		
+		val bufferedReader_fis1 = new BufferedReader(new FileReader(tmpOut3))
+		val bufferedReader_fis2 = new BufferedReader(new FileReader(tmpOut4))
+		val four_lines_fis1 = new ArrayBuffer[String]()
+		val four_lines_fis2 = new ArrayBuffer[String]()
+		var line_fis1: String = null
+		var line_fis2: String = null
+		var counter:Int = 0;
+		var chunk_num:Int = 1;
+		var bufferedWritter = new BufferedWriter(new FileWriter(tmpFileBase + "_chunk_" + chunk_num + ".fq"))
+
+		line_fis1 = bufferedReader_fis1.readLine
+		line_fis2 = bufferedReader_fis2.readLine
+
+		while (line_fis1 != null && line_fis2 != null) {
+
+			four_lines_fis1 += line_fis1
+			four_lines_fis2 += line_fis2
+			counter += 1;
+
+			if(counter % 4 == 0) {
+				// Writting a read into a chunk file
+				bufferedWritter.write(four_lines_fis1(0)) 
+				bufferedWritter.newLine()
+				bufferedWritter.write(four_lines_fis1(1)) 
+				bufferedWritter.newLine()
+				bufferedWritter.write(four_lines_fis1(2)) 
+				bufferedWritter.newLine()
+				bufferedWritter.write(four_lines_fis1(3)) 
+				bufferedWritter.newLine()
+				bufferedWritter.write(four_lines_fis2(0)) 
+				bufferedWritter.newLine()
+				bufferedWritter.write(four_lines_fis2(1)) 
+				bufferedWritter.newLine()
+				bufferedWritter.write(four_lines_fis2(2)) 
+				bufferedWritter.newLine()
+				bufferedWritter.write(four_lines_fis2(3)) 
+				bufferedWritter.newLine()
+
+				four_lines_fis1.clear()
+				four_lines_fis2.clear()
+
+				// this number obtained by the total length of the fastq file / 8, because we want to creat 8 chunks
+				if (counter == 480000){
+					bufferedWritter.close()
+					FileManager.uploadFileToOutput(tmpFileBase + "_chunk_" + chunk_num + ".fq", "complt", false, config)
+					chunk_num += 1;
+					counter = 0;
+					// creat a new chunk
+					bufferedWritter = new BufferedWriter(new FileWriter(tmpFileBase + "_chunk_" + chunk_num + ".fq"))
+				}
+
+			}
+			line_fis1 = bufferedReader_fis1.readLine
+			line_fis2 = bufferedReader_fis2.readLine
+		}
+		bufferedWritter.close()
+		bufferedReader_fis1.close()
+		bufferedReader_fis2.close()
+
+
 		// Delete temporary files
 		// new File(tmpOut1).delete()
 		// new File(tmpOut2).delete()
