@@ -219,6 +219,147 @@ object SparkGA1
 		return res.toArray
 	}
 
+	def complt_bwaRun(x: String, config: Configuration) : (Array[((Integer, Integer), (String, Long, Int, Int, String))]) = 
+	{
+		val blockSize = 4096 * 1024; 
+		var input_file = ""
+		val tmpDir = config.getTmpFolder
+		val hdfsManager = new HDFSManager
+		val downloadRef = config.getSfFolder == "./"
+		
+		if (config.getMode != "local")
+		{
+			hdfsManager.create(config.getOutputFolder + "log/bwa/" + x)
+			
+			if (!(new File(config.getTmpFolder).exists))
+				new File(config.getTmpFolder).mkdirs()
+			
+			if (downloadRef && (config.getMode != "local"))
+			{
+				LogWriter.dbgLog("bwa/" + x, "*\tDownloading reference files for bwa if required.", config)
+				FileManager.downloadBWAFiles("bwa/" + x, config)
+			}
+		}
+		else
+		{
+			input_file = config.getInputFolder + x + ".gz"
+			FileManager.makeDirIfRequired(config.getOutputFolder + "log/bwa", config)
+		}
+		
+		val file = new File(FileManager.getToolsDirPath(config) + "bwa") 
+		file.setExecutable(true)
+		val res = ArrayBuffer.empty[((Integer, Integer), (String, Long, Int, Int, String))]
+	
+		if (config.getMode != "local")
+		{
+			LogWriter.dbgLog("bwa/" + x, "0a\tDownloading from the HDFS", config)
+			hdfsManager.download(x + ".gz", config.getInputFolder, tmpDir, false)
+			input_file = tmpDir + x + ".gz"
+		}
+		
+		// unzip the input .gz file
+		var fqFileName = tmpDir + x
+		val unzipStr = "gunzip -c " + input_file
+		LogWriter.dbgLog("bwa/" + x, "0b\t" + unzipStr, config)
+		unzipStr #> new java.io.File(fqFileName) !;
+		if (config.getMode != "local")
+			new File(input_file).delete()
+		// All the chunks_file has been unzipped and uploaded to tmp folder in DataNode
+		// run bwa mem
+		val progName = FileManager.getToolsDirPath(config) + "bwa mem -R " + config.getRGString + " "
+		val outFileName = tmpDir + "out_" + x
+		val nthreads = config.getNumThreads.toInt
+		// Example: bwa mem input_files_directory/fasta_file.fasta -p -t 2 x.fq > out_file
+		val command_str = progName + FileManager.getRefFilePath(config) + " " + config.getExtraBWAParams + " -t " + nthreads.toString + " " + fqFileName
+		
+		// How does it got the bwa result here?  Done!
+		LogWriter.dbgLog("bwa/" + x, "1\tbwa mem started, RGID = " + config.getRGID + " -> " + command_str, config)
+		var writerMap = new HashMap[(Integer, Integer), SamRegion]()
+		val samRegionsParser = new SamRegionsParser(x, writerMap, config)
+		val stdErrorSb = new StringBuilder
+		val logger = ProcessLogger(
+			(o: String) => {
+				samRegionsParser.append(o)
+				},
+			(e: String) => {stdErrorSb.append(e + '\n')}
+		)
+		command_str ! logger;  // The result from this command executing will go to samRegionsParser
+		new File(fqFileName).delete()
+		// End ==========================================================================
+
+		FileManager.makeDirIfRequired(config.getOutputFolder + "compltChunks", config)
+		FileManager.makeDirIfRequired(config.getOutputFolder + "compltbwaPos", config)
+		
+		LogWriter.dbgLog("bwa/" + x, "2\tUploading SAM Files to the HDFS. reads = " + samRegionsParser.getNumOfReads + ", bad lines = " + samRegionsParser.getBadLines, config)
+		var currentNum = 1
+		var outStr = new StringBuilder
+		var dbgStr = new StringBuilder
+		var totalBytes = 0
+		// For positions
+		var posCurrentNum = 1
+		var posOutStr = new StringBuilder
+		var posTotalBytes = 0
+		val iWriterMap = writerMap.toMap // Might help with Garbage collection of the mutable HashMap.
+		writerMap = null
+		////////////////
+		for((k,samRegion) <- iWriterMap)
+		{
+			val t1 = System.currentTimeMillis
+			val chr = k._1
+			val reg = k._2
+			//  the info with each chr region
+			val minPos = samRegion.getMinPos
+			val maxPos = samRegion.getMaxPos
+			val content = samRegion.getContent
+			val posContent = samRegion.getPositionsStr // all the positions in this region
+			var posInfoStr = ""
+			
+			// For positions /////////////////////////////////////////////////////
+			if ((posTotalBytes + posContent.size) > blockSize)
+			{
+				FileManager.writeWholeFile(config.getOutputFolder + "compltbwaPos/pos_" + x + "-" + posCurrentNum, posOutStr.toString, config)
+				posCurrentNum += 1
+				posOutStr.setLength(0)
+				posTotalBytes = 0
+				posInfoStr = "pos_" + x + "-" + posCurrentNum + ",0," + posContent.size
+			}
+			else
+			{
+				posInfoStr = "pos_" + x + "-" + posCurrentNum + "," + posTotalBytes + "," + (posTotalBytes + posContent.size)
+			}
+			posOutStr.append(posContent)
+			posTotalBytes += posContent.size
+			//////////////////////////////////////////////////////////////////////
+			if ((totalBytes + content.size) > 0)
+			{
+				//dbgStr.append("+writeWholeFile\t")
+				FileManager.writeWholeFile(config.getOutputFolder + "compltChunks/chunk_" + x + "-" + currentNum, outStr.toString, config)
+				currentNum += 1
+				outStr.setLength(0)
+				totalBytes = 0
+				res.append(((chr, reg), ("chunk_" + x + "-" + currentNum + ",0," + content.size, samRegion.getSize, minPos, maxPos, posInfoStr)))
+			}
+			else
+			{
+				//dbgStr.append("-noWritingToWholeFile\t")
+				res.append(((chr, reg), ("chunk_" + x + "-" + currentNum + "," + totalBytes + "," + (totalBytes + content.size), samRegion.getSize, 
+					minPos, maxPos, posInfoStr)))
+			}
+			outStr.append(content)
+			totalBytes += content.size
+			//dbgStr.append((System.currentTimeMillis - t1).toString)
+		}
+		val t1 = System.currentTimeMillis
+		FileManager.writeWholeFile(config.getOutputFolder + "compltChunks/chunk_" + x + "-" + currentNum, outStr.toString, config)
+		FileManager.writeWholeFile(config.getOutputFolder + "compltbwaPos/pos_" + x + "-" + posCurrentNum, posOutStr.toString, config)
+		dbgStr.append("\n" + (System.currentTimeMillis - t1).toString)
+		//LogWriter.dbgLog("bwa/" + x, t0, "*\tTime taken by each loop iteration for chunk making step = " + dbgStr, config)
+		LogWriter.dbgLog("bwa/" + x, "3\tSAM files uploaded to the HDFS. # of positions files = " + posCurrentNum + ", # of sam files = " + 
+			currentNum + "\n=============================================================================\n" + stdErrorSb.toString, config)
+
+		return res.toArray
+	}
+
 	def getSamFileHeader(samFile: String) : String = 
 	{
 		val br = new BufferedReader(new FileReader(samFile))
@@ -235,8 +376,407 @@ object SparkGA1
 		br.close()
 		return sb.toString()
 	}
+	
+	def makeBAMFiles(chrRegion: (Integer, Integer), files: Array[(String, Long, Int, Int, String)], avgReadsPerRegion: Long, config: Configuration) : 
+		((Integer, Integer), Int) = 
+	{
+		val chr = chrRegion._1
+		val reg = chrRegion._2
+		val reads = files.map(x => x._2).reduce(_+_)
+		var segments = (reads.toFloat * config.getRegionsFactor.toFloat / avgReadsPerRegion).round.toInt
+		var retSegments = 1
+		val minPos = files.map(x => x._3).reduceLeft(_ min _)
+		val maxPos = files.map(x => x._4).reduceLeft(_ max _)
+		val posRange = maxPos - minPos
+		// Number of threads
+		val nThreads = config.getNumThreads.toInt
+		val hdfsManager = new HDFSManager
 		
-	def makeBAMFiles(chrRegion: Integer, files: Array[(String, Long, Int, Int, String, Integer)], avgReadsPerRegion: Long, config: Configuration) : 
+		if (config.getMode != "local")
+		{
+			if (segments > 1)
+				hdfsManager.create(config.getOutputFolder + "log/lb2/" + chr + "_" + reg)
+			else
+				hdfsManager.create(config.getOutputFolder + "log/lb/" + chr + "_" + reg)
+		}
+		else
+		{
+			FileManager.makeDirIfRequired(config.getOutputFolder + "log/lb", config)
+			FileManager.makeDirIfRequired(config.getOutputFolder + "log/lb2", config)
+		}
+		
+		if ((config.getMode != "local") && !(new File(config.getTmpFolder).exists))
+			new File(config.getTmpFolder).mkdirs()
+		
+		if (segments > 1)
+		{
+			LogWriter.dbgLog("lb2/" + chr + "_" + reg, "1a\tNumber of reads = " + reads + ", avgReadsPerRegion = " + avgReadsPerRegion + 
+				", number of segments > 1 (" + segments + ")!", config);
+			LogWriter.dbgLog("lb2/" + chr + "_" + reg, "1b\tminPos = " + minPos + ", maxPos = " + maxPos + ", posRange = " + posRange, config);
+		}
+		else
+			LogWriter.dbgLog("lb/" + chr + "_" + reg, "1\tStarting to combine the files. Reads = " + reads + ", avgReadsPerRegion = " + 
+				avgReadsPerRegion, config);
+		
+		val samRecords = ArrayBuffer.empty[(Integer, SAMRecord)]
+		var fileCount = 0
+		val shuffledFiles = Random.shuffle(files.toList).toArray
+		// Sam writers for each segment of a region with more than one segments
+		val samWriters = ArrayBuffer.empty[SAMFileWriter]
+		// Alignment positions based on which Multisegmented region would be divided.
+		var alnPosArray: Array[Int] = null
+		// Reads writen per segment
+		val readsWritten = ArrayBuffer.empty[Long]
+		
+		val threadArray = new Array[Thread](nThreads)
+		
+		if (segments > 1)
+		{
+			val header = createHeader(config)
+			
+			for(a <- 0 until segments)
+			{
+				val fileName = config.getTmpFolder + chr + "_" + reg + "_part" + a + ".sam"
+				val factory = new SAMFileWriterFactory()
+				val writer = factory.makeSAMWriter(header, false, new File(fileName))
+				// Append a writer for creating a segment of a region
+				samWriters.append(writer)
+				// Initialize reads count for each segment
+				readsWritten.append(0)
+			}
+			
+			LogWriter.dbgLog("lb2/" + chr + "_" + reg, "2a\tGetting the positions. Number of input files = " + shuffledFiles.size, config)
+			val contentArray = new Array[StringBuilder](nThreads) 
+			var fileInfoPerThread = ArrayBuffer.empty[scala.collection.mutable.ArrayBuffer[String]]
+			
+			for( a <- 0 until nThreads)
+			{
+				fileInfoPerThread.append(ArrayBuffer.empty[String])
+				contentArray(a) = new StringBuilder
+			}
+			
+			var index = 0
+			for (file <- shuffledFiles)
+			{
+				fileInfoPerThread(index % nThreads).append(file._5)
+				index += 1
+			}
+			
+			for(thread <- 0 until nThreads)
+			{
+				// Multithreaded /////////////////////////////////////////////////
+				threadArray(thread) = new Thread {
+					override def run {
+				//////////////////////////////////////////////////////////////////
+				for(f <- fileInfoPerThread(thread))
+				{
+					val fileInfo = f.split(',')
+					contentArray(thread).append(FileManager.readPartialFile(config.getOutputFolder + "compltbwaPos/" + fileInfo(0), fileInfo(2).toInt, config).slice(fileInfo(1).toInt, fileInfo(2).toInt))
+				}
+				// Multithreaded /////////////////////////////////////////////////
+					}
+				}
+				threadArray(thread).start
+				//////////////////////////////////////////////////////////////////
+			}
+			// Multithreaded ///////////////////////////////////////////////// 
+			for(thread <- 0 until nThreads)
+				threadArray(thread).join
+			//////////////////////////////////////////////////////////////////
+			
+			val content = new StringBuilder
+			for(thread <- 0 until nThreads)
+				content.append(contentArray(thread))
+			alnPosArray = content.split('\n').map(x => x.toInt)
+			retSegments = segments
+			LogWriter.dbgLog("lb2/" + chr + "_" + reg, "2b\tGot all " + alnPosArray.size + " positions in an array.", config)
+			//////////////////////////////////////////////////////////////////
+			val readsPerSegment = alnPosArray.size / segments
+			
+			// Sort the position array, so that we can use binary search with it
+			scala.util.Sorting.stableSort(alnPosArray)
+			
+			LogWriter.dbgLog("lb2/" + chr + "_" + reg, "3a\tTotal number of reads = " + alnPosArray.size + ", reads per segment = " + readsPerSegment, config)
+			
+			fileInfoPerThread = ArrayBuffer.empty[scala.collection.mutable.ArrayBuffer[String]]
+			
+			for( a <- 0 until nThreads)
+				fileInfoPerThread.append(ArrayBuffer.empty[String])
+			
+			index = 0
+			for (file <- shuffledFiles)
+			{
+				fileInfoPerThread(index % nThreads).append(file._1)
+				index += 1
+			}
+			
+			for(thread <- 0 until nThreads)
+			{
+				// Multithreaded /////////////////////////////////////////////////
+				threadArray(thread) = new Thread {
+					override def run {
+				//////////////////////////////////////////////////////////////////
+				var fileCount = 0
+				for(f <- fileInfoPerThread(thread))
+				{
+					val fileInfo = f.split(',')
+					var kvPairs: Array[(Integer, SAMRecord)] = null
+					
+					if (!downloadSAMFileInLB)
+					{
+						val content = FileManager.readWholeFile(config.getOutputFolder + "compltChunks/" + fileInfo(0), config).slice(fileInfo(1).toInt, fileInfo(2).toInt)
+				
+						// Get sam records from the chunk
+						val bwaKeyValues = new SamRecsReader(new StringBufferInputStream(content), config)			
+						bwaKeyValues.parseSam(null)
+						kvPairs = bwaKeyValues.getKeyValuePairs()
+						bwaKeyValues.close()
+					}
+					else
+					{
+						val fname = config.getTmpFolder + fileInfo(0)
+						hdfsManager.download(fileInfo(0), config.getOutputFolder + "compltChunks/", config.getTmpFolder, false)
+						
+						// Get sam records from the chunk
+						val bwaKeyValues = new SamRecsReader(new FileInputStream(fname), config)			
+						bwaKeyValues.parseSam(null)
+						kvPairs = bwaKeyValues.getKeyValuePairs()
+						bwaKeyValues.close()
+						
+						new File(fname).delete
+					}
+					
+					for (e <- kvPairs)
+					{
+						var i = binarySearch(alnPosArray, 0, alnPosArray.size-1, e._2.getAlignmentStart) / readsPerSegment
+						
+						if (i >= segments)
+							i = segments-1
+						
+						samWriters(i).synchronized
+						{
+							// Write to corresponding segment
+							samWriters(i).addAlignment(e._2)
+							readsWritten(i) += 1
+						}
+					}
+						
+					fileCount += 1
+					if ((fileCount % 50) == 0)
+						files.synchronized {LogWriter.dbgLog("lb2/" + chr + "_" + reg, "3b\t" + fileCount + " files processed by thread " + thread, config)}
+				}
+				files.synchronized {LogWriter.dbgLog("lb2/" + chr + "_" + reg, "3b\tTotal files processed by thread " + thread + " = " + fileCount, config)}
+				// Multithreaded /////////////////////////////////////////////////
+					}
+				}
+				threadArray(thread).start
+				//////////////////////////////////////////////////////////////////
+			}
+			// Multithreaded ///////////////////////////////////////////////// 
+			for(thread <- 0 until nThreads)
+				threadArray(thread).join
+			//////////////////////////////////////////////////////////////////
+			
+			// Make bam files of all the segments
+			val iterations =  Math.ceil(segments/nThreads.toFloat).toInt 
+			for(iter <- 0 until iterations)
+			{
+				var nUsedThreads = 0
+				for(thread <- 0 until nThreads)
+				{
+					val a = iter * nThreads + thread
+					if (a < segments)
+					{
+						nUsedThreads += 1
+						// Multithreaded /////////////////////////////////////////////////
+						threadArray(thread) = new Thread {
+							override def run {
+						//////////////////////////////////////////////////////////////////
+						val inputFile = config.getTmpFolder + chr + "_" + reg + "_part" + a + ".sam"
+						samWriters(a).close()
+					
+						files.synchronized {LogWriter.dbgLog("lb2/" + chr + "_" + reg, "4a\tReads in segment " + a + " = " + readsWritten(a), config)}
+						// Get sam records from the segment
+						val bwaKeyValues = new SamRecsReader(new FileInputStream(inputFile), config)
+						bwaKeyValues.parseSam(null)
+						val samRecords: Array[(Integer, SAMRecord)] = bwaKeyValues.getKeyValuePairs()
+						bwaKeyValues.close()
+			
+						files.synchronized {LogWriter.dbgLog("lb2/" + chr + "_" + reg, "4b\tWriting to BAM segment" + a + ". nUsedThreads = " + nUsedThreads, config)}
+						writeToBAMAndBed("part" + a + "_" + chr + "_" + reg, samRecords.toArray, 0, samRecords.size, config)
+						files.synchronized {LogWriter.dbgLog("lb2/" + chr + "_" + reg, "4c\tDone writing " + samRecords.size + " reads from " + inputFile, config)}
+					
+						new File(inputFile).delete()
+						// Multithreaded /////////////////////////////////////////////////
+							}
+						}
+						threadArray(thread).start
+						//////////////////////////////////////////////////////////////////
+					}
+				}
+				
+				// Multithreaded /////////////////////////////////////////////////
+				for(thread <- 0 until nUsedThreads)
+					threadArray(thread).join
+				//////////////////////////////////////////////////////////////////
+			}
+			
+			LogWriter.dbgLog("lb2/" + chr + "_" + reg, "5\tDone writing contents of all sam files.", config)
+		}
+		else
+		{
+			val fileInfoPerThread = ArrayBuffer.empty[scala.collection.mutable.ArrayBuffer[String]]
+			
+			for( a <- 0 until nThreads)
+				fileInfoPerThread.append(ArrayBuffer.empty[String])
+			
+			var index = 0
+			for (file <- shuffledFiles)
+			{
+				fileInfoPerThread(index % nThreads).append(file._1)
+				index += 1
+			}
+			
+			for(thread <- 0 until nThreads)
+			{
+				// Multithreaded /////////////////////////////////////////////////
+				threadArray(thread) = new Thread {
+					override def run {
+				//////////////////////////////////////////////////////////////////
+				var fileCount = 0
+				for (fi <- fileInfoPerThread(thread))
+				{
+					val fileInfo = fi.split(',')
+										
+					//val content = FileManager.readWholeFile(config.getOutputFolder + "samChunks/" + fileInfo(0), config).slice(fileInfo(1).toInt, fileInfo(2).toInt)
+					val content = FileManager.readPartialFile(config.getOutputFolder + "compltChunks/" + fileInfo(0), 
+						fileInfo(2).toInt, config).slice(fileInfo(1).toInt, fileInfo(2).toInt)
+					
+					// Get sam records from the chunk
+					val bwaKeyValues = new SamRecsReader(new StringBufferInputStream(content), config)	
+					bwaKeyValues.parseSam(null)
+					val kvPairs: Array[(Integer, SAMRecord)] = bwaKeyValues.getKeyValuePairs()
+					bwaKeyValues.close()
+					
+					samRecords.synchronized
+					{
+						for (e <- kvPairs)
+							samRecords.append(e)
+					}
+					
+					fileCount += 1
+					if ((fileCount % 50) == 0)
+						samRecords.synchronized {
+							LogWriter.dbgLog("lb/" + chr + "_" + reg, "2\tRead " + fileCount + " files into the array by thread " + thread, config)
+						}
+				} // End of for
+				samRecords.synchronized {
+					LogWriter.dbgLog("lb/" + chr + "_" + reg, "2\tTotal files read by thread " + thread + " = " + fileCount, config)
+				}
+				// Multithreaded /////////////////////////////////////////////////
+					}
+				}
+				threadArray(thread).start
+				//////////////////////////////////////////////////////////////////
+			}
+			// Multithreaded ///////////////////////////////////////////////// 
+			for(thread <- 0 until nThreads)
+				threadArray(thread).join
+			//////////////////////////////////////////////////////////////////
+			LogWriter.dbgLog("lb/" + chr + "_" + reg, "3\tRead all files into the array.", config)
+			writeToBAMAndBed(chr + "_" + reg, samRecords.toArray, 0, samRecords.size, config)
+			LogWriter.dbgLog("lb/" + chr + "_" + reg, "4\tBAM and BED files uploaded to the HDFS.", config)
+		}
+		
+		return ((chr, reg), retSegments)
+	}
+
+	def writeToBAMAndBed(chrRegion: String, samRecords: Array[(Integer, SAMRecord)], startIndex: Int, endIndex: Int, config: Configuration) : 
+		Integer =
+	{
+		val tmpFileBase =  config.getTmpFolder + chrRegion
+		val header = createHeader(config)
+		header.setSortOrder(SAMFileHeader.SortOrder.coordinate)
+		//////////////////////////////
+		val bamrg = new SAMReadGroupRecord(config.getRGID)
+		bamrg.setLibrary("LIB1")
+		bamrg.setPlatform("ILLUMINA")
+		bamrg.setPlatformUnit("UNIT1")
+		bamrg.setSample("SAMPLE1")
+		header.addReadGroup(bamrg)
+		/////////////////////////////
+		var part = if (chrRegion.contains("part")) "2" else "";
+		val hdfsManager = new HDFSManager
+			
+		if (config.getMode != "local")
+			hdfsManager.create(config.getOutputFolder + "log/lb" + part + "/region_" + chrRegion)
+		else
+			FileManager.makeDirIfRequired(config.getOutputFolder + "log/lb" + part, config)
+		
+		if (config.isInIgnoreList(samRecords(0)._2.getReferenceName))
+		{
+			LogWriter.dbgLog("lb" + part + "/region_" + chrRegion, "0\tChromosome " + samRecords(0)._2.getReferenceName + 
+				" is being ignored!", config);
+			return 0
+		}
+		
+		// Sorting
+		implicit val samRecordOrdering = new Ordering[(Integer, SAMRecord)] {
+			override def compare(a: (Integer, SAMRecord), b: (Integer, SAMRecord)) = compareSAMRecords(a._2, b._2)
+		}
+		if ((startIndex) == 0 && (endIndex == samRecords.size))
+		{
+			LogWriter.dbgLog("lb" + part + "/region_" + chrRegion, "0a\t" + "quicksort started...", config)
+			scala.util.Sorting.stableSort(samRecords)
+			LogWriter.dbgLog("lb" + part + "/region_" + chrRegion, "0b\t" + "quicksort done!", config)
+		}
+		//
+		
+		val factory = new SAMFileWriterFactory()
+		val writer = {
+			if ((config.getMode != "local") && writeToHDFSDirectlyInLB)
+				factory.makeBAMWriter(header, true,  hdfsManager.openStream(config.getOutputFolder + "bam/" + chrRegion + "-p1.bam"))
+			else
+				factory.makeBAMWriter(header, true, new File(tmpFileBase + "-p1.bam")) 
+		}
+		val regionIter = new RegionIterator(samRecords, header, startIndex, endIndex)
+		val RGID = config.getRGID
+		var count = 0
+		var badLines = 0
+		while(regionIter.hasNext()) 
+		{
+			val sam = regionIter.next()
+			/////////////////////////////////////////
+			sam.setAttribute(SAMTag.RG.name(), RGID)
+			/////////////////////////////////////////
+			try
+			{
+				writer.addAlignment(sam)
+			}
+			catch
+			{
+				case e: Exception => badLines += 1
+			}
+			count += 1
+			if ((count % 500000) == 0)
+				LogWriter.dbgLog("lb" + part + "/region_" + chrRegion, "1\t" + count + " records written. Bad lines = " + badLines, config)
+		}
+		regionIter.addLastChrRange()
+		val reads = regionIter.getCount()
+		writer.close
+		
+		LogWriter.dbgLog("lb" + part + "/region_" + chrRegion, "2\tMaking bed file. Reads = " + reads + ", written = " + count, config)
+		makeRegionFile(tmpFileBase, regionIter, config)
+		
+		if (!writeToHDFSDirectlyInLB)
+			FileManager.uploadFileToOutput(tmpFileBase + "-p1.bam", "bam", true, config)
+		FileManager.uploadFileToOutput(tmpFileBase + ".bed", "complt_bed", true, config)
+		LogWriter.dbgLog("lb" + part + "/region_" + chrRegion, "3\tBAM and bed files uploaded to the HDFS", config)
+		
+		return reads
+	}
+
+	def makeSAMFiles(chrRegion: Integer, files: Array[(String, Long, Int, Int, String, Integer)], avgReadsPerRegion: Long, config: Configuration) : 
 		((Integer, Integer), Int) = 
 	{
 		val chr = chrRegion//._1
@@ -463,7 +1003,7 @@ object SparkGA1
 						bwaKeyValues.close()
 			
 						files.synchronized {LogWriter.dbgLog("lb2/" + chr + "_" + reg, "4b\tWriting to BAM segment" + a + ". nUsedThreads = " + nUsedThreads, config)}
-						writeToBAMAndBed("part" + a + "_" + chr + "_" + reg, samRecords.toArray, 0, samRecords.size, config)
+						writeToSAMAndBed("part" + a + "_" + chr + "_" + reg, samRecords.toArray, 0, samRecords.size, config)
 						files.synchronized {LogWriter.dbgLog("lb2/" + chr + "_" + reg, "4c\tDone writing " + samRecords.size + " reads from " + inputFile, config)}
 					
 						new File(inputFile).delete()
@@ -544,7 +1084,7 @@ object SparkGA1
 				threadArray(thread).join
 			//////////////////////////////////////////////////////////////////
 			LogWriter.dbgLog("lb/" + chr + "_" + reg, "3\tRead all files into the array.", config)
-			writeToBAMAndBed(chr + "_" + reg, samRecords.toArray, 0, samRecords.size, config)
+			writeToSAMAndBed(chr + "_" + reg, samRecords.toArray, 0, samRecords.size, config)
 			LogWriter.dbgLog("lb/" + chr + "_" + reg, "4\tBAM and BED files uploaded to the HDFS.", config)
 		}
 		
@@ -573,7 +1113,7 @@ object SparkGA1
 			return binarySearch(arr, guess+1, endi, x) 
 	}
 
-	def writeToBAMAndBed(chrRegion: String, samRecords: Array[(Integer, SAMRecord)], startIndex: Int, endIndex: Int, config: Configuration) : 
+	def writeToSAMAndBed(chrRegion: String, samRecords: Array[(Integer, SAMRecord)], startIndex: Int, endIndex: Int, config: Configuration) : 
 		Integer =
 	{
 		val tmpFileBase =  config.getTmpFolder + chrRegion
@@ -653,7 +1193,7 @@ object SparkGA1
 		if (!writeToHDFSDirectlyInLB)
 			FileManager.uploadFileToOutput(tmpFileBase + "-p1_x_cut_50_picard_sort.sam", "sam", true, config)
 		FileManager.uploadFileToOutput(tmpFileBase + ".bed", "bed", true, config)
-		LogWriter.dbgLog("lb" + part + "/region_" + chrRegion, "3\tBAM and bed files uploaded to the HDFS", config)
+		LogWriter.dbgLog("lb" + part + "/region_" + chrRegion, "3\tSAM and bed files uploaded to the HDFS", config)
 		
 		return reads
 	}
@@ -809,8 +1349,8 @@ object SparkGA1
 		cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar SamToFastq INPUT=" + tmpOut2 + " FASTQ=" + tmpOut3 + " SECOND_END_FASTQ=" + tmpOut4
 		cmdRes += cmdStr.!
 		
-		FileManager.uploadFileToOutput(tmpOut3, "complt", false, config)
-		FileManager.uploadFileToOutput(tmpOut4, "complt", false, config)
+		// FileManager.uploadFileToOutput(tmpOut3, "complt", false, config)
+		// FileManager.uploadFileToOutput(tmpOut4, "complt", false, config)
 		
 		val bufferedReader_fis1 = new BufferedReader(new FileReader(tmpOut3))
 		val bufferedReader_fis2 = new BufferedReader(new FileReader(tmpOut4))
@@ -857,6 +1397,7 @@ object SparkGA1
 				if (counter == 480000){
 					bufferedWritter.close()
 					FileManager.uploadFileToOutput(tmpFileBase + "_chunk_" + chunk_num + ".fq", "complt", false, config)
+					new File(tmpFileBase + "_chunk_" + chunk_num + ".fq").delete()
 					chunk_num += 1;
 					counter = 0;
 					// creat a new chunk
@@ -869,14 +1410,15 @@ object SparkGA1
 		}
 		bufferedWritter.close()
 		FileManager.uploadFileToOutput(tmpFileBase + "_chunk_" + chunk_num + ".fq", "complt", false, config)
+		new File(tmpFileBase + "_chunk_" + chunk_num + ".fq").delete()
 		bufferedReader_fis1.close()
 		bufferedReader_fis2.close()
 
-
 		// Delete temporary files
-		// new File(tmpOut1).delete()
-		// new File(tmpOut2).delete()
-		// new File(tmpMetrics).delete()
+		new File(tmpOut1).delete()
+		new File(tmpOut2).delete()
+		new File(tmpOut3).delete()
+		new File(tmpOut4).delete()
 		
 		return cmdRes
 	}
@@ -1239,14 +1781,14 @@ object SparkGA1
 				}
 			}
 			FileManager.makeDirIfRequired(config.getOutputFolder + "bwaOut", config)
-			FileManager.writeWholeFile(config.getOutputFolder + "bwaOut.txt", bwaOutStr.toString, config)
+			FileManager.writeWholeFile(config.getOutputFolder + "bwaOut_1.txt", bwaOutStr.toString, config)
 		}
 		else if (part == 2)
 		{
 			val input = ArrayBuffer.empty[(Integer, (String, Long, Int, Int, String, Integer))]
 			val s = scala.collection.mutable.Set.empty[(Integer, Integer)]
 			// (chr, reg), ("chunk_" + x + "-" + currentNum + ",0," + content.size, samRegion.getSize, minPos, maxPos, posInfoStr)
-			val inputLinesArray = FileManager.readWholeFile(config.getOutputFolder + "bwaOut.txt", config).split('\n')
+			val inputLinesArray = FileManager.readWholeFile(config.getOutputFolder + "bwaOut_1.txt", config).split('\n')
 				
 			for( x <- inputLinesArray)
 			{
@@ -1283,12 +1825,12 @@ object SparkGA1
 			val loadBalRegions = 
 			{
 				if (!sizeBasedLBScheduling)
-					chrReg.map(x => makeBAMFiles(x._1, x._2.toArray, avgReadsPerRegion, bcConfig.value))
+					chrReg.map(x => makeSAMFiles(x._1, x._2.toArray, avgReadsPerRegion, bcConfig.value))
 				else
 				{
 					// x._2.map(_._2).reduce(_+_)  means: x._2 is an array first, x._2._2 is the numberOfReads. the result is the totalNumOfReads in that region 
 					val chrRegByReads = chrReg.map(x => (x._1, x._2, x._2.map(_._2).reduce(_+_))).sortBy(_._3, false)
-					chrRegByReads.map(x => makeBAMFiles(x._1, x._2.toArray, avgReadsPerRegion, bcConfig.value))
+					chrRegByReads.map(x => makeSAMFiles(x._1, x._2.toArray, avgReadsPerRegion, bcConfig.value))
 				}
 			}
 			loadBalRegions.cache
@@ -1312,7 +1854,7 @@ object SparkGA1
 					singleSegmentStr.append(chr + "\t" + reg + "\t" + segments + "\n")
 			}
 			
-			FileManager.writeWholeFile(config.getOutputFolder + "log/regions.txt", segmentsStr.toString + "=================================\n" + 
+			FileManager.writeWholeFile(config.getOutputFolder + "log/regions_1.txt", segmentsStr.toString + "=================================\n" + 
 				singleSegmentStr + "=================================\nTotal number of regions = " + totalRegions, config)
 		}
 		else if (part == 3)
@@ -1360,6 +1902,113 @@ object SparkGA1
 
 		}
 		else if (part == 4)
+		{ 
+			var bwaOutStr = new StringBuilder
+			val inputArray = FileManager.getInputFileNames(config.getInputFolder, config).filter(x => x.contains(".fq")).map(x => x.replace(".gz", ""))  
+			
+			if (inputArray == null)
+			{
+				println("The input directory does not exist!")
+				System.exit(1)
+			}
+			scala.util.Sorting.quickSort(inputArray)
+			inputArray.foreach(println)
+		
+			// Give chunks to bwa instances
+			val inputData = sc.parallelize(inputArray, inputArray.size) 
+		
+			// Run instances of bwa and get the output as Key Value pairs
+			// <(chr, reg), fname>
+			val bwaOutput = inputData.flatMap(x => complt_bwaRun(x, bcConfig.value))
+			bwaOutput.setName("rdd_bwaOutput")
+			for(e <- bwaOutput.collect)
+			{
+				val chr = e._1._1
+				val reg = e._1._2
+				val fname = e._2._1
+				val reads = e._2._2
+				val minPos = e._2._3
+				val maxPos = e._2._4
+				val posFname = e._2._5
+			
+				bwaOutStr.append(chr + "\t" + reg + "\t" + fname + "\t" + reads + "\t" + minPos + "\t" + maxPos + "\t" + posFname + "\n")
+			}
+			
+			FileManager.makeDirIfRequired(config.getOutputFolder + "bwaOut", config)
+			FileManager.writeWholeFile(config.getOutputFolder + "bwaOut.txt", bwaOutStr.toString, config)
+		}
+		else if (part == 5)
+		{
+			val input = ArrayBuffer.empty[((Integer, Integer), (String, Long, Int, Int, String))]
+			val s = scala.collection.mutable.Set.empty[(Integer, Integer)]
+			val inputLinesArray = FileManager.readWholeFile(config.getOutputFolder + "bwaOut.txt", config).split('\n')
+				
+			for( x <- inputLinesArray)
+			{
+				val e = x.split('\t')
+				input.append(((e(0).toInt, e(1).toInt), (e(2), e(3).toLong, e(4).toInt, e(5).toInt, e(6))))
+				s.add((e(0).toInt, e(1).toInt))
+			}
+			
+			hdfsManager.synchronized
+			{
+				LogWriter.statusLog("Input Size:", input.size.toString, config)
+			}
+			
+			val inputArray = input.toArray
+			// <(chr, reg), (fname, numOfReads, minPos, maxPos)>
+			val inputData = sc.parallelize(inputArray, s.size)
+			inputData.cache()
+			val totalReads = inputData.map(x => x._2._2).reduce(_+_)
+			hdfsManager.synchronized
+			{
+				LogWriter.statusLog("Total Reads:", totalReads.toString, config)
+			}
+			// <(chr, reg), Array((fname, numOfReads, minPos, maxPos))>
+			val chrReg = inputData.groupByKey
+			chrReg.cache()
+			chrReg.setName("rdd_chrReg")
+			val avgReadsPerRegion = totalReads / chrReg.count
+			hdfsManager.synchronized
+			{
+				LogWriter.statusLog("chrReg:", "Chr regions:" + chrReg.count + ", Total reads: " + avgReadsPerRegion, config)
+			}
+			// <(chr, reg), segments>
+			val loadBalRegions = 
+			{
+				if (!sizeBasedLBScheduling)
+					chrReg.map(x => makeBAMFiles(x._1, x._2.toArray, avgReadsPerRegion, bcConfig.value))
+				else
+				{
+					val chrRegByReads = chrReg.map(x => (x._1, x._2, x._2.map(_._2).reduce(_+_))).sortBy(_._3, false)
+					chrRegByReads.map(x => makeBAMFiles(x._1, x._2.toArray, avgReadsPerRegion, bcConfig.value))
+				}
+			}
+			loadBalRegions.cache
+			loadBalRegions.setName("rdd_loadBalRegions")
+			//////////////////////////////////////////////////////////////////////
+			val x = loadBalRegions.collect
+			var segmentsStr = new StringBuilder
+			var singleSegmentStr = new StringBuilder
+			var totalRegions = 0
+			for(e <- x)
+			{
+				val chr = e._1._1
+				val reg = e._1._2
+				val segments = e._2
+				
+				totalRegions += segments
+				
+				if (segments > 1)
+					segmentsStr.append(chr + "\t" + reg + "\t" + segments + "\n")
+				else
+					singleSegmentStr.append(chr + "\t" + reg + "\t" + segments + "\n")
+			}
+			
+			FileManager.writeWholeFile(config.getOutputFolder + "log/regions.txt", segmentsStr.toString + "=================================\n" + 
+				singleSegmentStr + "=================================\nTotal number of regions = " + totalRegions, config)
+		}
+		else if (part == 6)
 		{
 			// For sorting
 			implicit val vcfOrdering = new Ordering[(Integer, Integer)] {
@@ -1369,7 +2018,7 @@ object SparkGA1
 			
 			var inputFileNames: Array[String] = null
 			if (config.getMode != "local") 
-				inputFileNames = FileManager.getInputFileNames(config.getOutputFolder + "bed/", config).map(x => x.replace(".bed", ""))
+				inputFileNames = FileManager.getInputFileNames(config.getOutputFolder + "complt_bed/", config).map(x => x.replace(".bed", ""))
 			else 
 				inputFileNames = FileManager.getInputFileNames(config.getTmpFolder, config).filter(x => x.contains(".bed")).map(x => x.replace(".bed", ""))
 			
