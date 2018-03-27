@@ -809,8 +809,8 @@ object SparkGA1
 		cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar SamToFastq INPUT=" + tmpOut2 + " FASTQ=" + tmpOut3 + " SECOND_END_FASTQ=" + tmpOut4
 		cmdRes += cmdStr.!
 		
-		// FileManager.uploadFileToOutput(tmpOut3, "complt", false, config)
-		// FileManager.uploadFileToOutput(tmpOut4, "complt", false, config)
+		FileManager.uploadFileToOutput(tmpOut3, "complt", false, config)
+		FileManager.uploadFileToOutput(tmpOut4, "complt", false, config)
 		
 		val bufferedReader_fis1 = new BufferedReader(new FileReader(tmpOut3))
 		val bufferedReader_fis2 = new BufferedReader(new FileReader(tmpOut4))
@@ -868,6 +868,7 @@ object SparkGA1
 			line_fis2 = bufferedReader_fis2.readLine
 		}
 		bufferedWritter.close()
+		FileManager.uploadFileToOutput(tmpFileBase + "_chunk_" + chunk_num + ".fq", "complt", false, config)
 		bufferedReader_fis1.close()
 		bufferedReader_fis2.close()
 
