@@ -10,7 +10,7 @@
 	<inputFolder>chunks</inputFolder>
 	<outputFolder>output</outputFolder> 
 	<toolsFolder>/home/minfengli/soft</toolsFolder>
-	<tmpFolder>/tmp/minfeng_run50</tmpFolder>
+	<tmpFolder>/tmp/minfeng_run_50</tmpFolder>
 	<sfFolder>/tmp/reference/hg19</sfFolder>
 	<rgString>@RG\tID:sample_lane\tSM:sample\tPL:illumina\tLB:sample\tPU:lane</rgString>
 	<extraBWAParams>-p</extraBWAParams>

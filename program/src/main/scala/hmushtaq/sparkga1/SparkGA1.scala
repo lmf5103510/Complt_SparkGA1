@@ -1336,7 +1336,7 @@ object SparkGA1
 		var t0 = System.currentTimeMillis
 		// ./complt_cut_read/complt_cut_read_fast --n_threads 16 --in_fname ./${1}_x_cut_${3}_picard_sort.sam --out_fname ./${1}_complt.sam --use_ref --ref ../gnome/hg19/ucsc.hg19.fasta --read_len 100
 		// FileManager.getToolsDirPath(config) + "bwa
-		var cmdStr = toolsFolder + "complt_cut_read_fast --n_threads 8 --in_fname " + tmpOut1 + " --out_fname " + tmpOut2 + " --use_ref --ref " + FileManager.getRefFilePath(config) + " --read_len " + readLength
+		var cmdStr = toolsFolder + "complt_cut_read_fast --n_threads " + config.getNumThreads() + " --in_fname " + tmpOut1 + " --out_fname " + tmpOut2 + " --use_ref --ref " + FileManager.getRefFilePath(config) + " --read_len " + readLength
 		var cmdRes = cmdStr.!
 				
 		cmdStr = "java " + MemString + " -jar " + toolsFolder + "picard.jar SamToFastq INPUT=" + tmpOut2 + " FASTQ=" + tmpOut3 + " SECOND_END_FASTQ=" + tmpOut4
