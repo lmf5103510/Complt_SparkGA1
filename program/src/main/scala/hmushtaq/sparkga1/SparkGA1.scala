@@ -271,10 +271,10 @@ object SparkGA1
 		if (!config.doCompltion)
 		{
 			val unzipStr = "gunzip -c " + input_file
--			LogWriter.dbgLog("bwa/" + x, "0b\t" + unzipStr, config)
--			unzipStr #> new java.io.File(fqFileName) !;
--			if (config.getMode != "local")
--				new File(input_file).delete()
+			LogWriter.dbgLog("bwa/" + x, "0b\t" + unzipStr, config)
+			unzipStr #> new java.io.File(fqFileName) !;
+			if (config.getMode != "local")
+				new File(input_file).delete()
 		}
 
 		// All the chunks_file has been unzipped and uploaded to tmp folder in DataNode
