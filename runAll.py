@@ -33,7 +33,7 @@ def getElapsedStr(elapsed):
 times_list = []
 times_list.append(time.time())
 
-iterations = 4 - startingPart
+iterations = 7 - startingPart
 for i in range(0, iterations):
 	part = str(i+startingPart)
 	os.system("./runPart.py " + configFile + " " + part + " &> log" + part + ".txt")
