@@ -1,8 +1,8 @@
 <configuration>
-	<fastq1Path>/home/minfengli/merged_fastq/053_mer_pred_R1_0.fastq</fastq1Path>
+	<fastq1Path>/home/minfengli/incomplt/08013_cutadapt_R1.fastq</fastq1Path>
 	<!-- fastq2Path should be left empty (<fastq2Path></fastq2Path>) for a single ended input -->
-	<fastq2Path>/home/minfengli/merged_fastq/053_mer_pred_R2_50.fastq</fastq2Path>
-	<outputFolder>chunks</outputFolder> 
+	<fastq2Path>/home/minfengli/incomplt/08013_cutadapt_R2.fastq</fastq2Path>
+	<outputFolder>local:/home/minfengli/chunks</outputFolder> 
 	<compLevel>4</compLevel>
 	<chunkSizeMB>60</chunkSizeMB>
 	<blockSizeMB>8</blockSizeMB>

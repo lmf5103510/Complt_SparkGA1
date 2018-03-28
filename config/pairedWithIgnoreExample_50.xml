@@ -7,14 +7,15 @@
 	<indelPath>1000G_phase1.indels.hg19.sites.vcf</indelPath>
 	<hapmapPath>Mills_and_1000G_gold_standard.indels.hg19.sites.vcf</hapmapPath>
 	<exomePath>hg19/gcat_053.bed</exomePath>
-	<inputFolder>chunks_ori</inputFolder>
-	<outputFolder>output_ori</outputFolder> 
+	<inputFolder>chunks</inputFolder>
+	<outputFolder>output</outputFolder> 
 	<toolsFolder>/home/minfengli/soft</toolsFolder>
-	<tmpFolder>/tmp/minfeng_run</tmpFolder>
+	<tmpFolder>/tmp/minfeng_run50</tmpFolder>
 	<sfFolder>/tmp/reference/hg19</sfFolder>
 	<rgString>@RG\tID:sample_lane\tSM:sample\tPL:illumina\tLB:sample\tPU:lane</rgString>
 	<extraBWAParams>-p</extraBWAParams>
 	<gatkOpts></gatkOpts>
+	<readLen>100</readLen>
 	<ignoreList>
 	chr1_gl000191_random,chr1_gl000192_random,chr4_ctg9_hap1,chr4_gl000193_random,chr4_gl000194_random,
 	chr6_apd_hap1,chr6_cox_hap2,chr6_dbb_hap3,chr6_mann_hap4,chr6_mcf_hap5,chr6_qbl_hap6,chr6_ssto_hap7,
@@ -50,6 +51,12 @@
 	<numInstances3>4</numInstances3> 	
 	<numThreads3>8</numThreads3>
 	<numTasks3>18</numTasks3>
+	<!-- parameters for part 4 -->
+	<execMemGB4>112</execMemGB4>						
+	<driverMemGB4>2</driverMemGB4> 					
+	<numInstances4>4</numInstances4> 	
+	<numThreads4>8</numThreads4>
+	<numTasks4>8</numTasks4>
 	<!-- ===================== -->
 	<standEC>0</standEC>
 	<standCC>0</standCC>
