@@ -242,7 +242,10 @@ object SparkGA1
 		}
 		else
 		{
-			input_file = config.getOutputFolder + "complt/" + x
+			if (config.doCompltion)
+				input_file = config.getOutputFolder + "complt/" + x
+			else
+				input_file = config.getOutputFolder + "complt/" + x + ".gz"
 			FileManager.makeDirIfRequired(config.getOutputFolder + "log/bwa", config)
 		}
 		
@@ -253,17 +256,34 @@ object SparkGA1
 		if (config.getMode != "local")
 		{
 			LogWriter.dbgLog("bwa/" + x, "0a\tDownloading from the HDFS", config)
-			hdfsManager.download(x, config.getOutputFolder + "complt/", tmpDir, false)
-			input_file = tmpDir + x
+			if (config.doCompltion)
+				hdfsManager.download(x, config.getOutputFolder + "complt/", tmpDir, false)
+			else
+				hdfsManager.download(x + ".gz", config.getOutputFolder + "complt/", tmpDir, false)
+			
+			if (config.doCompltion)
+				input_file = tmpDir + x
+			else
+				input_file = tmpDir + x + ".gz"
 		}
 		
+		var fqFileName = tmpDir + x
+		if (!config.doCompltion)
+		{
+			val unzipStr = "gunzip -c " + input_file
+-			LogWriter.dbgLog("bwa/" + x, "0b\t" + unzipStr, config)
+-			unzipStr #> new java.io.File(fqFileName) !;
+-			if (config.getMode != "local")
+-				new File(input_file).delete()
+		}
+
 		// All the chunks_file has been unzipped and uploaded to tmp folder in DataNode
 		// run bwa mem
 		val progName = FileManager.getToolsDirPath(config) + "bwa mem -R " + config.getRGString + " "
 		val outFileName = tmpDir + "out_" + x
 		val nthreads = config.getNumThreads.toInt
 		// Example: bwa mem input_files_directory/fasta_file.fasta -p -t 2 x.fq > out_file
-		val command_str = progName + FileManager.getRefFilePath(config) + " " + config.getExtraBWAParams + " -t " + nthreads.toString + " " + input_file
+		val command_str = progName + FileManager.getRefFilePath(config) + " " + config.getExtraBWAParams + " -t " + nthreads.toString + " " + fqFileName
 		
 		// How does it got the bwa result here?  Done!
 		LogWriter.dbgLog("bwa/" + x, "1\tbwa mem started, RGID = " + config.getRGID + " -> " + command_str, config)
@@ -277,7 +297,7 @@ object SparkGA1
 			(e: String) => {stdErrorSb.append(e + '\n')}
 		)
 		command_str ! logger;  // The result from this command executing will go to samRegionsParser
-		new File(input_file).delete()
+		new File(fqFileName).delete()
 		// End ==========================================================================
 
 		FileManager.makeDirIfRequired(config.getOutputFolder + "compltChunks", config)
@@ -1897,7 +1917,7 @@ object SparkGA1
 		else if (part == 4)
 		{ 
 			var bwaOutStr = new StringBuilder
-			val inputArray = FileManager.getInputFileNames(config.getOutputFolder + "complt/", config).filter(x => x.contains(".fq"))  
+			val inputArray = FileManager.getInputFileNames(config.getOutputFolder + "complt/", config).filter(x => x.contains(".fq")).map(x => x.replace(".gz", ""))  
 			
 			if (inputArray == null)
 			{

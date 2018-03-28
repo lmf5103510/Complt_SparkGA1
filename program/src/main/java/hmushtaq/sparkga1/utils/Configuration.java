@@ -67,6 +67,7 @@ public class Configuration implements Serializable
 	private boolean streamingBWA;
 	private boolean performIndelRealignment;
 	private boolean performPrintReads;
+	private boolean doComplt;
 	private ArrayList<Integer> chrLenArray;
 	private int[] chrRegionSizeArray;
 	private HashMap<String, Integer> chrNameMap;
@@ -125,6 +126,7 @@ public class Configuration implements Serializable
 			
 			performIndelRealignment = trueIfTagDoesntExist(document, "doIndelRealignment");
 			performPrintReads = trueIfTagDoesntExist(document, "doPrintReads");
+			doComplt = trueIfTagDoesntExist(document, "doComplt");
 			chunkerConfigFilePath = emptyIfTagDoesntExist(document, "chunkerConfigFilePath");
 			chunkerGroupSize = emptyIfTagDoesntExist(document, "chunkerGroupSize");
 			
@@ -393,6 +395,11 @@ public class Configuration implements Serializable
 		return performPrintReads;
 	}
 	
+	public boolean doCompltion()
+	{
+		return doComplt;
+	}
+
 	public boolean doStreamingBWA()
 	{
 		return streamingBWA;

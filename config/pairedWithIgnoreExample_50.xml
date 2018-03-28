@@ -31,6 +31,7 @@
 	</ignoreList>
 	<numRegions>300</numRegions>
 	<regionsFactor>1</regionsFactor>
+	<doComplt>true</doComplt>
 	<!-- ===================== -->
 	<!-- parameters for part 1 -->
 	<execMemGB1>112</execMemGB1> 						
