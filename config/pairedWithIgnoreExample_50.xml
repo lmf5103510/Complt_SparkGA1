@@ -57,6 +57,18 @@
 	<numInstances4>4</numInstances4> 	
 	<numThreads4>8</numThreads4>
 	<numTasks4>8</numTasks4>
+	<!-- parameters for part 5 -->
+	<execMemGB5>112</execMemGB5> 						
+	<driverMemGB5>2</driverMemGB5> 					
+	<numInstances5>4</numInstances5> 	
+	<numThreads5>4</numThreads5>
+	<numTasks5>10</numTasks5>
+	<!-- parameters for part 6 -->
+	<execMemGB6>112</execMemGB6>					
+	<driverMemGB6>8</driverMemGB6> 					
+	<numInstances6>4</numInstances6> 	
+	<numThreads6>8</numThreads6>
+	<numTasks6>18</numTasks6>
 	<!-- ===================== -->
 	<standEC>0</standEC>
 	<standCC>0</standCC>

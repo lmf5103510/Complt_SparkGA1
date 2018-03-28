@@ -1387,7 +1387,7 @@ object SparkGA1
 				four_lines_fis2.clear()
 
 				// this number obtained by the total length of the fastq file / 8, because we want to creat 8 chunks
-				if (counter == 480000){
+				if (counter == 1440000){
 					bufferedWritter.close()
 					FileManager.uploadFileToOutput(tmpFileBase + "_chunk_" + chunk_num + ".fq", "complt", false, config)
 					new File(tmpFileBase + "_chunk_" + chunk_num + ".fq").delete()
@@ -1431,7 +1431,7 @@ object SparkGA1
 			
 			LogWriter.dbgLog("vcf/region_" + chrRegion, "2g\tDownloading bam and bed files to the local directory...", config)
 			hdfsManager.download(chrRegion + "-p1.bam", config.getOutputFolder + "bam/", config.getTmpFolder, false)
-			hdfsManager.download(chrRegion + ".bed", config.getOutputFolder + "bed/", config.getTmpFolder, false)
+			hdfsManager.download(chrRegion + ".bed", config.getOutputFolder + "complt_bed/", config.getTmpFolder, false)
 			LogWriter.dbgLog("vcf/region_" + chrRegion, "2h\tCompleted download of bam and bed to the local directory!", config)
 		}
 		else
