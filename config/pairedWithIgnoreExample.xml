@@ -8,9 +8,9 @@
 	<hapmapPath>Mills_and_1000G_gold_standard.indels.hg19.sites.vcf</hapmapPath>
 	<exomePath>hg19/gcat_053.bed</exomePath>
 	<inputFolder>chunks</inputFolder>
-	<outputFolder>output_ori</outputFolder> 
+	<outputFolder>output_50</outputFolder> 
 	<toolsFolder>/home/minfengli/soft</toolsFolder>
-	<tmpFolder>/tmp/run_ori</tmpFolder>
+	<tmpFolder>/tmp/run_50</tmpFolder>
 	<sfFolder>/tmp/reference/hg19</sfFolder>
 	<rgString>@RG\tID:sample_lane\tSM:sample\tPL:illumina\tLB:sample\tPU:lane</rgString>
 	<extraBWAParams>-p</extraBWAParams>
