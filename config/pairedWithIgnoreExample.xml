@@ -8,14 +8,15 @@
 	<hapmapPath>Mills_and_1000G_gold_standard.indels.hg19.sites.vcf</hapmapPath>
 	<exomePath>hg19/gcat_053.bed</exomePath>
 	<inputFolder>chunks</inputFolder>
-	<outputFolder>output</outputFolder> 
+	<outputFolder>output_ori</outputFolder> 
 	<toolsFolder>/home/minfengli/soft</toolsFolder>
-	<tmpFolder>/tmp/minfeng_run_50</tmpFolder>
+	<tmpFolder>/tmp/run_ori</tmpFolder>
 	<sfFolder>/tmp/reference/hg19</sfFolder>
 	<rgString>@RG\tID:sample_lane\tSM:sample\tPL:illumina\tLB:sample\tPU:lane</rgString>
 	<extraBWAParams>-p</extraBWAParams>
 	<gatkOpts></gatkOpts>
 	<readLen>100</readLen>
+	<doComplt>false</doComplt>
 	<ignoreList>
 	chr1_gl000191_random,chr1_gl000192_random,chr4_ctg9_hap1,chr4_gl000193_random,chr4_gl000194_random,
 	chr6_apd_hap1,chr6_cox_hap2,chr6_dbb_hap3,chr6_mann_hap4,chr6_mcf_hap5,chr6_qbl_hap6,chr6_ssto_hap7,
@@ -31,7 +32,6 @@
 	</ignoreList>
 	<numRegions>300</numRegions>
 	<regionsFactor>1</regionsFactor>
-	<doComplt>true</doComplt>
 	<!-- ===================== -->
 	<!-- parameters for part 1 -->
 	<execMemGB1>112</execMemGB1> 						
