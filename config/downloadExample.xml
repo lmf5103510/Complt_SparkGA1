@@ -5,7 +5,7 @@
 	<refFileName></refFileName>
 	<snpFileName></snpFileName>
 	<indelFileName></indelFileName>
-	<sfFolder>/tmp/minfeng_run_ori</sfFolder> 
+	<sfFolder>/tmp/run</sfFolder> 
 	<numNodes>4</numNodes>
 	<execMemGB>108</execMemGB>
 	<driverMemGB>2</driverMemGB>

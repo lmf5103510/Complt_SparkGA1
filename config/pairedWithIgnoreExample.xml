@@ -7,15 +7,16 @@
 	<indelPath>1000G_phase1.indels.hg19.sites.vcf</indelPath>
 	<hapmapPath>Mills_and_1000G_gold_standard.indels.hg19.sites.vcf</hapmapPath>
 	<exomePath>hg19/gcat_053.bed</exomePath>
-	<inputFolder>chunks</inputFolder>
-	<outputFolder>output_50</outputFolder> 
+	<inputFolder>chunks_30</inputFolder>
+	<outputFolder>output_40_oriread</outputFolder> 
 	<toolsFolder>/home/minfengli/soft</toolsFolder>
-	<tmpFolder>/tmp/run_50</tmpFolder>
+	<tmpFolder>/tmp/run</tmpFolder>
 	<sfFolder>/tmp/reference/hg19</sfFolder>
 	<rgString>@RG\tID:sample_lane\tSM:sample\tPL:illumina\tLB:sample\tPU:lane</rgString>
 	<extraBWAParams>-p</extraBWAParams>
 	<gatkOpts></gatkOpts>
 	<readLen>100</readLen>
+	<complt_Algo>4</complt_Algo>
 	<doComplt>false</doComplt>
 	<ignoreList>
 	chr1_gl000191_random,chr1_gl000192_random,chr4_ctg9_hap1,chr4_gl000193_random,chr4_gl000194_random,
