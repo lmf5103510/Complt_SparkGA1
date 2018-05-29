@@ -245,7 +245,7 @@ object SparkGA1
 			if (config.doCompltion)
 				input_file = config.getOutputFolder + "complt/" + x
 			else
-				input_file = config.getOutputFolder + "complt/" + x + ".gz"
+				input_file = config.getInputFolder + x + ".gz"
 			FileManager.makeDirIfRequired(config.getOutputFolder + "log/bwa", config)
 		}
 		
@@ -259,7 +259,7 @@ object SparkGA1
 			if (config.doCompltion)
 				hdfsManager.download(x, config.getOutputFolder + "complt/", tmpDir, false)
 			else
-				hdfsManager.download(x + ".gz", config.getOutputFolder + "complt/", tmpDir, false)
+				hdfsManager.download(x + ".gz", config.getInputFolder, tmpDir, false)
 			
 			if (config.doCompltion)
 				input_file = tmpDir + x
@@ -1779,7 +1779,7 @@ object SparkGA1
 				// Run instances of bwa and get the output as Key Value pairs
 				// <(chr, reg), fname>
 				val bwaOutput = inputData.flatMap(x => bwaRun(x, bcConfig.value))  // run bwa for each chunks
-				bwaOutput.setName("rdd_bwaOutput")
+				bwaOutput.setName("rdd_complt_bwaOutput")
 				for(e <- bwaOutput.collect)
 				{
 					val chr = e._1._1
@@ -1828,7 +1828,7 @@ object SparkGA1
 			// <(chr, reg), Array((fname, numOfReads, minPos, maxPos))>
 			val chrReg = inputData.groupByKey
 			chrReg.cache()
-			chrReg.setName("rdd_chrReg")
+			chrReg.setName("rdd_complt_chrReg")
 			val avgReadsPerRegion = totalReads / chrReg.count
 			hdfsManager.synchronized
 			{
@@ -1917,8 +1917,12 @@ object SparkGA1
 		else if (part == 4)
 		{ 
 			var bwaOutStr = new StringBuilder
-			val inputArray = FileManager.getInputFileNames(config.getOutputFolder + "complt/", config).filter(x => x.contains(".fq")).map(x => x.replace(".gz", ""))  
-			
+			var inputArray: Array[String] = new Array(0) 
+			if (config.doCompltion)
+				inputArray = FileManager.getInputFileNames(config.getOutputFolder + "complt/", config).filter(x => x.contains(".fq")).map(x => x.replace(".gz", ""))  
+			else
+				inputArray = FileManager.getInputFileNames(config.getInputFolder, config).filter(x => x.contains(".fq")).map(x => x.replace(".gz", ""))
+
 			if (inputArray == null)
 			{
 				println("The input directory does not exist!")
