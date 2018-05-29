@@ -1847,7 +1847,7 @@ object SparkGA1
 				}
 			}
 			loadBalRegions.cache
-			loadBalRegions.setName("rdd_loadBalRegions")
+			loadBalRegions.setName("rdd_complt_loadBalRegions")
 			//////////////////////////////////////////////////////////////////////
 			val x = loadBalRegions.collect
 			var segmentsStr = new StringBuilder
