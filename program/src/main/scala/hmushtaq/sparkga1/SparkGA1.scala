@@ -134,7 +134,7 @@ object SparkGA1
 		// How does it got the bwa result here?  Done!
 		LogWriter.dbgLog("bwa/" + x, "1\tbwa mem started, RGID = " + config.getRGID + " -> " + command_str, config)
 		var writerMap = new HashMap[(Integer, Integer), SamRegion]()
-		val samRegionsParser = new SamRegionsParser(x, writerMap, config)
+		val samRegionsParser = new SamRegionsParser(x, writerMap, config, 1)
 		val stdErrorSb = new StringBuilder
 		val logger = ProcessLogger(
 			(o: String) => {
@@ -288,7 +288,7 @@ object SparkGA1
 		// How does it got the bwa result here?  Done!
 		LogWriter.dbgLog("bwa/" + x, "1\tbwa mem started, RGID = " + config.getRGID + " -> " + command_str, config)
 		var writerMap = new HashMap[(Integer, Integer), SamRegion]()
-		val samRegionsParser = new SamRegionsParser(x, writerMap, config)
+		val samRegionsParser = new SamRegionsParser(x, writerMap, config, 4)
 		val stdErrorSb = new StringBuilder
 		val logger = ProcessLogger(
 			(o: String) => {

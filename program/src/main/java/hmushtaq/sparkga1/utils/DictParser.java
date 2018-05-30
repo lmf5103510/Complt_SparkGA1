@@ -36,6 +36,7 @@ public class DictParser
 	SAMSequenceDictionary dict;
 	ArrayList<Integer> chrLenArray;
 	int[] chrRegionSizeArray;
+	int[] complt_chrRegionSizeArray;
 	long chrLenSum;
 	private HashMap<String, Integer> chrNameMap;
 	private HashSet<String> ignoreListSet;
@@ -94,12 +95,35 @@ public class DictParser
 			System.out.println("Hamid: chr" + i + " -> segments = " + segments + ", region size = " + chrRegionSizeArray[i]);
 		}
 	}
+
+	void setCompltChrRegionsSizes(int regions)
+	{
+		complt_chrRegionSizeArray = new int[chrLenArray.size()];
+		int avgRegionSize = (int)(chrLenSum / regions);
+		
+		for(int i = 0; i < chrLenArray.size(); i++)
+		{
+			int segments = chrLenArray.get(i) / avgRegionSize;
+		
+			if (segments == 0)
+				segments = 1;
+		
+			complt_chrRegionSizeArray[i] = chrLenArray.get(i) / segments;
+			System.out.println("Hamid: chr" + i + " avgRegionSize = " + avgRegionSize + ", chrLen = " + chrLenArray.get(i));
+			System.out.println("Hamid: chr" + i + " -> segments = " + segments + ", region size = " + complt_chrRegionSizeArray[i]);
+		}
+	}
 	
 	public int[] getChrRegionSizeArray()
 	{
 		return chrRegionSizeArray;
 	}
 	
+	public int[] getCompltChrRegionSizeArray()
+	{
+		return complt_chrRegionSizeArray;
+	}
+
 	public HashMap getChrNameMap()
 	{
 		return chrNameMap;

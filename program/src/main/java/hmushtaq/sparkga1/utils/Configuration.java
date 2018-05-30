@@ -52,6 +52,7 @@ public class Configuration implements Serializable
 	private String numThreads;
 	private String ignoreList;
 	private String numRegions;
+	private String numRegions_c;
 	private String regionsFactor;
 	private SAMSequenceDictionary dict;
 	private String scc;
@@ -72,6 +73,7 @@ public class Configuration implements Serializable
 	private boolean doComplt;
 	private ArrayList<Integer> chrLenArray;
 	private int[] chrRegionSizeArray;
+	private int[] complt_chrRegionSizeArray;
 	private HashMap<String, Integer> chrNameMap;
 	private HashSet<String> ignoreListSet;
 	
@@ -114,6 +116,7 @@ public class Configuration implements Serializable
 			}
 			//////////////////////////////////////////////////////////////////
 			numRegions = document.getElementsByTagName("numRegions").item(0).getTextContent();
+			numRegions_c = document.getElementsByTagName("numRegions_c").item(0).getTextContent();
 			regionsFactor = document.getElementsByTagName("regionsFactor").item(0).getTextContent();
 			
 			numTasks = document.getElementsByTagName("numTasks" + part).item(0).getTextContent();
@@ -158,7 +161,9 @@ public class Configuration implements Serializable
 			System.out.println("\n1.Hash code of dict = " + dict.hashCode() + "\n");
 			chrLenArray = dictParser.getChrLenArray();
 			dictParser.setChrRegionsSizes(Integer.parseInt(numRegions));
+			dictParser.setCompltChrRegionsSizes(Integer.parseInt(numRegions_c));
 			chrRegionSizeArray = dictParser.getChrRegionSizeArray();
+			complt_chrRegionSizeArray = dictParser.getCompltChrRegionSizeArray();
 			chrNameMap = dictParser.getChrNameMap();
 		}
 		catch(Exception e)
@@ -228,6 +233,11 @@ public class Configuration implements Serializable
 	public int getChrRegionSize(int chr)
 	{
 		return chrRegionSizeArray[chr];
+	}
+
+	public int getCompltChrRegionSize(int chr)
+	{
+		return complt_chrRegionSizeArray[chr];
 	}
 
 	public String getMode()
@@ -332,7 +342,12 @@ public class Configuration implements Serializable
 	{
 		return numRegions;
 	}
-	
+
+	public String getNumRegions_C()
+	{
+		return numRegions_c;
+	}
+
 	public void setNumThreads(String numThreads)
 	{
 		this.numThreads = numThreads;

@@ -23,7 +23,7 @@ package hmushtaq.sparkga1.utils
  *
  * @author Hamid Mushtaq
  */
-class SamRegionsParser(chunkID: String, writerMap: scala.collection.mutable.HashMap[(Integer, Integer), SamRegion], config: Configuration)
+class SamRegionsParser(chunkID: String, writerMap: scala.collection.mutable.HashMap[(Integer, Integer), SamRegion], config: Configuration, part_num: Integer)
 {
 	var mReads = 0
 	var badLines = 0
@@ -58,6 +58,7 @@ class SamRegionsParser(chunkID: String, writerMap: scala.collection.mutable.Hash
 			val chr = config.getChrIndex(fields(2))
 			// position of that read in that chr   
 			val chrPos = fields(3).toInt
+			var reg = 0
 
 			if (chr >= 0  && (flags & 2) > 0)
 			{
@@ -65,8 +66,11 @@ class SamRegionsParser(chunkID: String, writerMap: scala.collection.mutable.Hash
 					
 					if (!config.isInIgnoreList(fields(6))) {
 						//getChrRegionSize: the average region size for this chr, obtain this region num for this read, eg, this read is in region 2 or chr2
-						val reg = chrPos / config.getChrRegionSize(chr)
-					
+						if (part_num == 1)
+							reg = chrPos / config.getChrRegionSize(chr)
+						if (part_num == 4)
+							reg = chrPos / config.getCompltChrRegionSize(chr)
+
 						if (!writerMap.contains((chr, reg)))
 							writerMap.put((chr, reg), new SamRegion(header.toString, chr + "_" + reg + "_" + chunkID, config))
 						writerMap((chr, reg)).append(chrPos, line)  // put corresponding line into right chr+reg chunks
@@ -82,7 +86,10 @@ class SamRegionsParser(chunkID: String, writerMap: scala.collection.mutable.Hash
 					}
 				}
 				else {
-					val reg = chrPos / config.getChrRegionSize(chr)
+					if (part_num == 1)
+						reg = chrPos / config.getChrRegionSize(chr)
+					if (part_num == 4)
+						reg = chrPos / config.getCompltChrRegionSize(chr)
 				
 					if (!writerMap.contains((chr, reg)))
 						writerMap.put((chr, reg), new SamRegion(header.toString, chr + "_" + reg + "_" + chunkID, config))

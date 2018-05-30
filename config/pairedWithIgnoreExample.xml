@@ -7,17 +7,19 @@
 	<indelPath>1000G_phase1.indels.hg19.sites.vcf</indelPath>
 	<hapmapPath>Mills_and_1000G_gold_standard.indels.hg19.sites.vcf</hapmapPath>
 	<exomePath>hg19/gcat_053.bed</exomePath>
-	<inputFolder>chunks_30</inputFolder>
-	<outputFolder>output_40_oriread</outputFolder> 
+	<inputFolder>chunks_40</inputFolder>
+	<outputFolder>output</outputFolder> 
 	<toolsFolder>/home/minfengli/soft</toolsFolder>
 	<tmpFolder>/tmp/run</tmpFolder>
-	<sfFolder>/tmp/reference/hg19</sfFolder>
+	<sfFolder>/tmp/reference</sfFolder>
 	<rgString>@RG\tID:sample_lane\tSM:sample\tPL:illumina\tLB:sample\tPU:lane</rgString>
 	<extraBWAParams>-p</extraBWAParams>
 	<gatkOpts></gatkOpts>
+	<!-- parameters for completion part -->
 	<readLen>100</readLen>
-	<complt_Algo>4</complt_Algo>
-	<doComplt>false</doComplt>
+	<cutLen>40</cutLen>
+	<complt_Algo>3</complt_Algo>
+	<doComplt>true</doComplt>
 	<ignoreList>
 	chr1_gl000191_random,chr1_gl000192_random,chr4_ctg9_hap1,chr4_gl000193_random,chr4_gl000194_random,
 	chr6_apd_hap1,chr6_cox_hap2,chr6_dbb_hap3,chr6_mann_hap4,chr6_mcf_hap5,chr6_qbl_hap6,chr6_ssto_hap7,
@@ -31,7 +33,8 @@
 	chrUn_gl000236,chrUn_gl000237,chrUn_gl000238,chrUn_gl000239,chrUn_gl000240,chrUn_gl000241,chrUn_gl000242,
 	chrUn_gl000243,chrUn_gl000244,chrUn_gl000245,chrUn_gl000246,chrUn_gl000247,chrUn_gl000248,chrUn_gl000249
 	</ignoreList>
-	<numRegions>300</numRegions>
+	<numRegions>150</numRegions>
+	<numRegions_c>300</numRegions_c>
 	<regionsFactor>1</regionsFactor>
 	<!-- ===================== -->
 	<!-- parameters for part 1 -->
