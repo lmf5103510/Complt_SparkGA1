@@ -62,6 +62,7 @@ public class Configuration implements Serializable
 	private String driverMemGB;
 	private String vcMemGB;
 	private String readLen;
+	private String cutLen;
 	private String complt_Algo;
 	private String chunkerConfigFilePath;
 	private String chunkerGroupSize;
@@ -120,6 +121,7 @@ public class Configuration implements Serializable
 			driverMemGB = document.getElementsByTagName("driverMemGB" + part).item(0).getTextContent();
 			vcMemGB = document.getElementsByTagName("vcMemGB").item(0).getTextContent();
 			readLen = emptyIfTagDoesntExist(document, "readLen");
+			cutLen = emptyIfTagDoesntExist(document, "cutLen");
 			complt_Algo = emptyIfTagDoesntExist(document, "complt_Algo");
 			scc	= document.getElementsByTagName("standCC").item(0).getTextContent();
 			sec	= document.getElementsByTagName("standEC").item(0).getTextContent();
@@ -365,6 +367,10 @@ public class Configuration implements Serializable
 	public String getReadLen()
 	{
 		return readLen;
+	}
+	public String getCutLen()
+	{
+		return cutLen;
 	}
 	public String getCompltAlgo()
 	{

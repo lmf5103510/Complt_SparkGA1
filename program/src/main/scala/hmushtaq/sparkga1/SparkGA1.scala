@@ -789,11 +789,13 @@ object SparkGA1
 		return reads
 	}
 
-	def makeSAMFiles(chrRegion: Integer, files: Array[(String, Long, Int, Int, String, Integer)], avgReadsPerRegion: Long, config: Configuration) : 
+	def makeSAMFiles(chrRegion: (Integer, Integer), files: Array[(String, Long, Int, Int, String)], avgReadsPerRegion: Long, config: Configuration) : 
 		((Integer, Integer), Int) = 
+	// def makeSAMFiles(chrRegion: Integer, files: Array[(String, Long, Int, Int, String, Integer)], avgReadsPerRegion: Long, config: Configuration) : 
+	// 	((Integer, Integer), Int) = 
 	{
-		val chr = chrRegion//._1
-		val reg = 1 //chrRegion._2
+		val chr = chrRegion._1
+		val reg = chrRegion._2
 		val reads = files.map(x => x._2).reduce(_+_)
 		// 
 		var segments = 1 //(reads.toFloat * config.getRegionsFactor.toFloat / avgReadsPerRegion).round.toInt
@@ -981,9 +983,9 @@ object SparkGA1
 		val factory = new SAMFileWriterFactory()
 		val writer = {
 			if ((config.getMode != "local") && writeToHDFSDirectlyInLB)
-				factory.makeSAMWriter(header, true,  hdfsManager.openStream(config.getOutputFolder + "sam/" + chrRegion + "-p1_x_cut_50_picard_sort.sam"))
+				factory.makeSAMWriter(header, true,  hdfsManager.openStream(config.getOutputFolder + "sam/" + chrRegion + "-p1_x_cut_" + config.getCutLen() + "_picard_sort.sam"))
 			else
-				factory.makeSAMWriter(header, true, new File(tmpFileBase + "-p1_x_cut_50_picard_sort.sam")) 
+				factory.makeSAMWriter(header, true, new File(tmpFileBase + "-p1_x_cut_" + config.getCutLen() + "_picard_sort.sam")) 
 		}
 		val regionIter = new RegionIterator(samRecords, header, startIndex, endIndex)
 		val RGID = config.getRGID
@@ -1015,7 +1017,7 @@ object SparkGA1
 		makeRegionFile(tmpFileBase, regionIter, config)
 		
 		if (!writeToHDFSDirectlyInLB)
-			FileManager.uploadFileToOutput(tmpFileBase + "-p1_x_cut_50_picard_sort.sam", "sam", true, config)
+			FileManager.uploadFileToOutput(tmpFileBase + "-p1_x_cut_" + config.getCutLen() + "_picard_sort.sam", "sam", true, config)
 		FileManager.uploadFileToOutput(tmpFileBase + ".bed", "bed", true, config)
 		LogWriter.dbgLog("lb" + part + "/region_" + chrRegion, "3\tSAM and bed files uploaded to the HDFS", config)
 		
@@ -1136,13 +1138,13 @@ object SparkGA1
 				new File(config.getTmpFolder).mkdirs()
 			
 			LogWriter.dbgLog("complt/region_" + chrRegion, "2g\tDownloading incomplt sam files to the local directory...", config)
-			hdfsManager.download(chrRegion + "-p1_x_cut_50_picard_sort.sam", config.getOutputFolder + "sam/", config.getTmpFolder, false)
+			hdfsManager.download(chrRegion + "-p1_x_cut_" + config.getCutLen() + "_picard_sort.sam", config.getOutputFolder + "sam/", config.getTmpFolder, false)
 			LogWriter.dbgLog("complt/region_" + chrRegion, "2h\tCompleted download of incomplt sam to the local directory!", config)
 		}
 		else
 			FileManager.makeDirIfRequired(config.getOutputFolder + "log/complt", config)
 
-		var f = new File(tmpFileBase + "-p1_x_cut_50_picard_sort.sam");
+		var f = new File(tmpFileBase + "-p1_x_cut_" + config.getCutLen() + "_picard_sort.sam");
 		if(f.exists() && !f.isDirectory()) 
 			LogWriter.dbgLog("complt/region_" + chrRegion, "*+\tSAM file does exist in the tmp directory!", config)
 		else
@@ -1157,7 +1159,7 @@ object SparkGA1
 	def compltProcess(tmpFileBase: String, config: Configuration) : Integer =
 	{
 		val toolsFolder = FileManager.getToolsDirPath(config)
-		val tmpOut1 = tmpFileBase + "-p1_x_cut_50_picard_sort.sam"
+		val tmpOut1 = tmpFileBase + "-p1_x_cut_" + config.getCutLen() + "_picard_sort.sam"
 		val tmpOut2 = tmpFileBase + "-p2.sam"
 		val tmpOut3 = tmpFileBase + "-p1.fastq"
 		val tmpOut4 = tmpFileBase + "-p2.fastq"
@@ -1608,8 +1610,9 @@ object SparkGA1
 			FileManager.writeWholeFile(config.getOutputFolder + "bwaOut_1.txt", bwaOutStr.toString, config)
 		}
 		else if (part == 2)
-		{
-			val input = ArrayBuffer.empty[(Integer, (String, Long, Int, Int, String, Integer))]
+		{	
+			val input = ArrayBuffer.empty[((Integer, Integer), (String, Long, Int, Int, String))]
+			// val input = ArrayBuffer.empty[(Integer, (String, Long, Int, Int, String, Integer))]
 			val s = scala.collection.mutable.Set.empty[(Integer, Integer)]
 			// (chr, reg), ("chunk_" + x + "-" + currentNum + ",0," + content.size, samRegion.getSize, minPos, maxPos, posInfoStr)
 			val inputLinesArray = FileManager.readWholeFile(config.getOutputFolder + "bwaOut_1.txt", config).split('\n')
@@ -1618,7 +1621,8 @@ object SparkGA1
 			{
 				val e = x.split('\t')
 				// (chr, reg), ("chunk_" + x + "-" + currentNum + ",0," + content.size, samRegion.getSize, minPos, maxPos, posInfoStr)
-				input.append((e(0).toInt, (e(2), e(3).toLong, e(4).toInt, e(5).toInt, e(6), e(1).toInt)))
+				input.append(((e(0).toInt, e(1).toInt), (e(2), e(3).toLong, e(4).toInt, e(5).toInt, e(6))))
+				// input.append((e(0).toInt, (e(2), e(3).toLong, e(4).toInt, e(5).toInt, e(6), e(1).toInt)))
 				s.add((e(0).toInt, e(1).toInt))
 			}
 			
@@ -1636,7 +1640,7 @@ object SparkGA1
 			{
 				LogWriter.statusLog("Total Reads:", totalReads.toString, config)
 			}
-			// <(chr, reg), Array((fname, numOfReads, minPos, maxPos))>
+			// <(chr, Array((fname, numOfReads, minPos, maxPos))>
 			val chrReg = inputData.groupByKey
 			chrReg.cache()
 			chrReg.setName("rdd_complt_chrReg")
@@ -1645,7 +1649,7 @@ object SparkGA1
 			{
 				LogWriter.statusLog("chrReg:", "Chr regions:" + chrReg.count + ", Total reads: " + avgReadsPerRegion, config)
 			}
-			// <(chr, reg), segments>
+			// <(chr, segments>
 			val loadBalRegions = 
 			{
 				if (!sizeBasedLBScheduling)
@@ -1698,7 +1702,7 @@ object SparkGA1
 				}
 				else
 				{
-					val inputFileNamesWithSize = inputFileNames.map(x => (x, hdfsManager.getFileSize(config.getOutputFolder + "sam/" + x + "-p1_x_cut_50_picard_sort.sam")))
+					val inputFileNamesWithSize = inputFileNames.map(x => (x, hdfsManager.getFileSize(config.getOutputFolder + "sam/" + x + "-p1_x_cut_" + config.getCutLen() + "_picard_sort.sam")))
 					val fileNamesBySize = inputFileNamesWithSize.sortWith(_._2 > _._2).map(_._1)
 					fileNamesBySize.foreach(println)
 					sc.parallelize(fileNamesBySize, fileNamesBySize.size)
