@@ -12,7 +12,9 @@ Accurate DNA Analysis at Scale. In Proceedings of ACM-BCB ’17, Boston,
 MA, USA, August 20-23, 2017.
 
 This README contains the following sections.
+
 Note: point 1~6 are from SparkGA and point 7 shows the difference for running Complt_SparkGA.
+
 1. **System requirements and Installation**
 2. **Compiling**
 3. **Files required**
@@ -155,15 +157,21 @@ If you are not running the chunker utility in parallel (to make chunks on the fl
 
 ## Running Complt_SparkGA
 Complt_SparkGA consists of six parts. if the input data is still original data, you should start from part 4 which keeps the same for the following steps compared to SparkGA. If you do need to complete the read fisrt, you should start from part 1.
+
 In the configuration file, there are more setting as follows:
+
 1. **readLen** - The length of the original read.
 2. **cutLen** - The length of the cut for mate read.
 3. **complt_Algo** - The algorithm of part 3 to complete the incomplete read.
 4. **doComplt** - If you run Complt_SparkGA with original data, you do not need to run completion algorithm.
 5. **numRegions_c** - The number of regions to create for variant calling. The number of regions to create for completion part is actually defined by **numRegions**.
+
 Uploading your incomplete data set into HDFS should be done by:
+
 hadoop jar HalvadeUploaderWithLibs.jar –1 /dir/to/reads1.fastq -2 /dir/to/reads2.fastq -O /HDFS_out/ –t 8
+
 HalvadeUploaderWithLibs.jar can be found in chunker folder.
+
 Running the chunker utility in parallel is only acceptable if the input data is complete paired read.
 
 
