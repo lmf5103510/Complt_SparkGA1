@@ -1,4 +1,8 @@
-# SparkGA
+# Complt_SparkGA
+
+Complt_SparkGA is a scalable implementation of Predictive Genome Analysis Using Partial DNA Sequencing Data based on Apache Spark. The idea for predictive analysis of partial DNA data can be found in that paper.
+
+The project is forked from SparkGA, Hamid Mushtaq.
 
 SparkGA is an Apache Spark based scalable implementation of the best practice DNA analysis pipeline by Broad Institute. A paper describing its implementation has been accepted for the ACM-BCB 2017 conference. So, if you use SparkGA for your work, please cite the following paper.
 
