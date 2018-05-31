@@ -1,6 +1,6 @@
 # Complt_SparkGA
 
-Complt_SparkGA is a scalable implementation of Predictive Genome Analysis Using Partial DNA Sequencing Data based on Apache Spark. The idea for predictive analysis of partial DNA data can be found in that paper.
+Complt_SparkGA is a scalable implementation of Predictive Genome Analysis Using Partial DNA Sequencing Data based on Apache Spark. The idea of predictive analysis for partial DNA data can be found in that paper.
 
 The project is forked from SparkGA, Hamid Mushtaq.
 
@@ -12,6 +12,7 @@ Accurate DNA Analysis at Scale. In Proceedings of ACM-BCB ’17, Boston,
 MA, USA, August 20-23, 2017.
 
 This README contains the following sections.
+Note: point 1~6 are from SparkGA and point 7 shows the difference for running Complt_SparkGA.
 1. **System requirements and Installation**
 2. **Compiling**
 3. **Files required**
@@ -21,6 +22,7 @@ This README contains the following sections.
 	* **Configuration file for the chunker utility**
 	* **Configuration file for the downloader utility**
 6. **Running SparkGA**
+7. **Running Complt_SparkGA**
 
 ## System requirements and Installation
 For SparkGA, you must have the following software packages installed in your system/cluster. Note that SparkGA runs on a yarn cluster, so when running in cluster mode, the cluster should have been properly setup. Moreover, your system/cluster must be Linux-based.
@@ -151,9 +153,18 @@ SparkGA consists of three parts. The python script `runAll.py` will run these th
 
 If you are not running the chunker utility in parallel (to make chunks on the fly), and want to run the chunker utility separately first before running SparkGA, you can use the `runChunker.py` python script which takes an xml file as an input (See Section **Configuration file for the chunker utility** for more details on that xml file).
 
-
-
-
+## Running Complt_SparkGA
+Complt_SparkGA consists of six parts. if the input data is still original data, you should start from part 4 which keeps the same for the following steps compared to SparkGA. If you do need to complete the read fisrt, you should start from part 1.
+In the configuration file, there are more setting as follows:
+1. **readLen** - The length of the original read.
+2. **cutLen** - The length of the cut for mate read.
+3. **complt_Algo** - The algorithm of part 3 to complete the incomplete read.
+4. **doComplt** - If you run Complt_SparkGA with original data, you do not need to run completion algorithm.
+5. **numRegions_c** - The number of regions to create for variant calling. The number of regions to create for completion part is actually defined by **numRegions**.
+Uploading your incomplete data set into HDFS should be done by:
+hadoop jar HalvadeUploaderWithLibs.jar –1 /dir/to/reads1.fastq -2 /dir/to/reads2.fastq -O /HDFS_out/ –t 8
+HalvadeUploaderWithLibs.jar can be found in chunker folder.
+Running the chunker utility in parallel is only acceptable if the input data is complete paired read.
 
 
 
