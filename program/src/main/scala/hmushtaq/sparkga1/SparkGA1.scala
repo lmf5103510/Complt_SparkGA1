@@ -1223,7 +1223,8 @@ object SparkGA1
 				if (counter == 1440000){
 					bufferedWritter.close()
 					FileManager.uploadFileToOutput(tmpFileBase + "_chunk_" + chunk_num + ".fq", "complt", false, config)
-					new File(tmpFileBase + "_chunk_" + chunk_num + ".fq").delete()
+					if (config.getMode != "local")
+						new File(tmpFileBase + "_chunk_" + chunk_num + ".fq").delete()
 					chunk_num += 1;
 					counter = 0;
 					// creat a new chunk
@@ -1236,7 +1237,8 @@ object SparkGA1
 		}
 		bufferedWritter.close()
 		FileManager.uploadFileToOutput(tmpFileBase + "_chunk_" + chunk_num + ".fq", "complt", false, config)
-		new File(tmpFileBase + "_chunk_" + chunk_num + ".fq").delete()
+		if (config.getMode != "local")
+			new File(tmpFileBase + "_chunk_" + chunk_num + ".fq").delete()
 		bufferedReader_fis1.close()
 		bufferedReader_fis2.close()
 
@@ -1734,7 +1736,12 @@ object SparkGA1
 			var bwaOutStr = new StringBuilder
 			var inputArray: Array[String] = new Array(0) 
 			if (config.doCompltion)
-				inputArray = FileManager.getInputFileNames(config.getOutputFolder + "complt/", config).filter(x => x.contains(".fq")).map(x => x.replace(".gz", ""))  
+			{
+				if (config.getMode != "local")
+					inputArray = FileManager.getInputFileNames(config.getOutputFolder + "complt/", config).filter(x => x.contains(".fq")).map(x => x.replace(".gz", ""))  
+				else
+					inputArray = FileManager.getInputFileNames(config.getTmpFolder, config).filter(x => x.contains(".fq")).map(x => x.replace(".gz", ""))
+			}
 			else
 				inputArray = FileManager.getInputFileNames(config.getInputFolder, config).filter(x => x.contains(".fq")).map(x => x.replace(".gz", ""))
 
